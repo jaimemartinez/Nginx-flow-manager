@@ -1,8 +1,10 @@
 # Nginx Flow Manager
 
-> A visual, React-Flow-based control plane for nginx: design your topology on a canvas, compile it to real nginx config with a pure-TypeScript compiler, validate it with `nginx -t` in a throwaway sandbox, and deploy it to a remote Linux host over SSH — with verbatim round-trip import of your existing configuration.
+> Losslessly **import an existing, hand-written nginx config into an editable visual topology** — and round-trip it back out verbatim, without dropping or fabricating a single directive. From there, design on a canvas, compile to real nginx config with a pure-TypeScript compiler, validate it with `nginx -t` in a throwaway sandbox, and deploy to a remote Linux host over SSH.
 
-Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. You lay out servers, locations, upstreams and global blocks as nodes on an interactive canvas; the app compiles that graph into actual nginx files, tests them against a real nginx binary in an isolated sandbox, and pushes the result to your server — either through a hardened on-server **nfm-agent** or a direct SSH/local fallback. Because the compiler and parser are designed for exact fidelity, you can import an existing, hand-written config and round-trip it without losing or fabricating a single directive.
+> **Note:** the UI is currently **Spanish-only** (no i18n / English translation yet).
+
+Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. Its genuine differentiator is the **verbatim round-trip import**: point it at a live, hand-written nginx tree and it parses the real config — comments, ordering, and unmodeled blocks included — into an editable canvas, then compiles it back out byte-for-faithfully. Tools like Nginx Proxy Manager, Caddy, or Ansible make you adopt *their* model of your config; NFM adopts *yours*. You lay out servers, locations, upstreams and global blocks as nodes on an interactive canvas; the app compiles that graph into actual nginx files, tests them against a real nginx binary in an isolated sandbox, and pushes the result to your server — either through a hardened on-server **nfm-agent** or a direct SSH/local fallback. Because the compiler and parser are designed for exact fidelity, you can import an existing config and round-trip it without losing or fabricating a single directive.
 
 ## Features
 
@@ -82,7 +84,7 @@ The panel port can also be changed in-app (persisted to `app-config.json`, appli
 
 - **Backend:** Express 4 + [ssh2](https://github.com/mscdex/ssh2), TypeScript, run with `tsx` (dev) / esbuild bundle (prod). HTTPS-only.
 - **Frontend:** React 19 + Vite + [@xyflow/react](https://reactflow.dev/), Tailwind CSS, lucide-react, motion.
-- **Compiler/parser:** pure TypeScript, no nginx dependency to generate files.
+- **Compiler/parser:** pure TypeScript (`src/utils/nginxCompiler.ts` + `src/utils/nginxParser.ts`), no nginx dependency to generate or parse files.
 
 ## Project layout
 
@@ -98,13 +100,15 @@ src/
   context/TopologyContext.tsx   Canvas + version-history state
   components/              Canvas, custom nodes, managers (Site, Cert, Tls, Version, Agent)
   utils/
+    nginxParser.ts         nginx config text → tokens → AST (pure TS; for import)
+    nginxImport.ts         Parsed AST → canvas topology (parseSingleConfig)
     nginxCompiler.ts       Topology → nginx config files (the compiler)
     trafficViz.ts          Log events → animated canvas traffic
     api.ts                 secureFetch (cookie + CSRF) client
     layoutSolver.ts        Automatic node layout
 ```
 
-The nginx **parser** (config text → AST → topology, for import) lives in `server.ts` (`tokenizeNginx` / `parseNginxAST`).
+The nginx **parser** (config text → AST) lives in `src/utils/nginxParser.ts` (`tokenizeNginx` / `parseNginxAST`, plus the AST types) — it is pure TypeScript, no longer embedded in `server.ts`. The import layer that turns a parsed AST into a canvas topology (`parseSingleConfig`) is being extracted into `src/utils/nginxImport.ts`.
 
 ## Documentation
 

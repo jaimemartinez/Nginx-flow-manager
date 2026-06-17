@@ -13,6 +13,11 @@ graphify-out/
 certs/
 app-config.json
 workspace-state.json
+# FIX #8: atomic-write sidecars for the workspace state
+workspace-state.json.bak
+workspace-state.json.tmp
+# FIX #7(c): on-disk deploy audit trail (JSONL) + state dir
+logs/
 # Secrets — agent SSH private key + HMAC secret (NEVER commit)
 agent-config.json
 # Key / certificate material (defense-in-depth)
