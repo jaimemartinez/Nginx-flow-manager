@@ -11,6 +11,8 @@ import { sshExec, sshReadFile, sshWriteFile, sshReadDir, sshFileExists, sshSymli
 import { createRequire } from "module";
 import { installUploads, uninstallScript, AGENT_BIN, AGENT_USER } from "./agent-install";
 import { AgentClient } from "./agent-client";
+// FIX #3: pure nginx tokenizer/AST extracted to its own module (was defined inline below).
+import { tokenizeNginx, parseNginxAST, NginxToken, NginxASTNode, NginxDirective, NginxBlock } from "./src/utils/nginxParser";
 
 // ssh2 exposes `utils` only via CommonJS (not an ESM named export); reach it through require.
 const sshUtils = createRequire(import.meta.url)("ssh2").utils;
@@ -1088,13 +1090,44 @@ async function startServer() {
   });
 
   app.put("/api/state", (req, res) => {
-    const { state } = req.body || {};
+    const { state, expectedUpdatedAt } = req.body || {};
     if (state === undefined || state === null) {
       return res.status(400).json({ success: false, error: "Falta el estado a guardar." });
     }
     try {
+      // FIX #8: optional optimistic-concurrency check. If the client passes the updatedAt it last
+      // read, reject the write when the on-disk state has moved on (lost-update protection). Skipped
+      // when expectedUpdatedAt is omitted, so existing callers are unaffected.
+      if (typeof expectedUpdatedAt === "string" && fs.existsSync(WORKSPACE_STATE_FILE)) {
+        try {
+          const current = JSON.parse(fs.readFileSync(WORKSPACE_STATE_FILE, "utf-8"));
+          if (current?.updatedAt && current.updatedAt !== expectedUpdatedAt) {
+            return res.status(409).json({ success: false, error: "El estado del workspace cambió desde la última lectura.", updatedAt: current.updatedAt });
+          }
+        } catch { /* unreadable/corrupt current state → fall through and overwrite */ }
+      }
+
       const updatedAt = new Date().toISOString();
-      fs.writeFileSync(WORKSPACE_STATE_FILE, JSON.stringify({ updatedAt, state }, null, 2), { encoding: "utf-8", mode: 0o600 });
+      const payload = JSON.stringify({ updatedAt, state }, null, 2);
+
+      // FIX #8: atomic write. A bare writeFileSync truncates-then-writes the live file, so a crash
+      // mid-write (or a concurrent reader) can observe a half-written / empty workspace-state.json.
+      // Instead keep a single .bak of the previous version, write to a temp file (mode 0o600 in the
+      // open() so there is no default-umask window), fsync it, then rename it over the target —
+      // rename(2) on the same directory is atomic, so a reader always sees a complete file.
+      const tmpFile = `${WORKSPACE_STATE_FILE}.tmp`;
+      const bakFile = `${WORKSPACE_STATE_FILE}.bak`;
+      if (fs.existsSync(WORKSPACE_STATE_FILE)) {
+        try { fs.copyFileSync(WORKSPACE_STATE_FILE, bakFile); fs.chmodSync(bakFile, 0o600); } catch { /* best-effort backup */ }
+      }
+      const fd = fs.openSync(tmpFile, "w", 0o600);
+      try {
+        fs.writeFileSync(fd, payload, "utf-8");
+        fs.fsyncSync(fd);
+      } finally {
+        fs.closeSync(fd);
+      }
+      fs.renameSync(tmpFile, WORKSPACE_STATE_FILE); // atomic swap over the target
       try { fs.chmodSync(WORKSPACE_STATE_FILE, 0o600); } catch { /* Windows ignores POSIX perms */ }
       res.json({ success: true, updatedAt });
     } catch (err: any) {
@@ -1175,6 +1208,11 @@ async function startServer() {
       const ssh = getSshConfig();
       const sandboxBase = `/tmp/nfm-validate-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       const sboxNginx = `${sandboxBase}/etc/nginx`;
+      // FIX #7 / TODO: like the local-validate rewrite, this is a blunt global string replace of
+      // /etc/nginx/ — it can rewrite the substring inside unrelated string literals too. It does NOT
+      // touch /etc/letsencrypt/, which is correct here: those paths point at the real remote host so
+      // the cert files resolve as-is during `nginx -t`. A precise fix would rewrite only path-bearing
+      // directive arguments via the AST; left as a follow-up to keep this low-risk.
       const rewriteRemote = (content: string, isNginxConf = false): string => {
         let r = content;
         if (isNginxConf) {
@@ -1275,14 +1313,37 @@ async function startServer() {
         } catch (symErr) {
           console.error("Failed to link modules:", symErr);
         }
+
+        // FIX #7: link the real /etc/letsencrypt into the sandbox so SSL directives that reference
+        // /etc/letsencrypt/live/<domain>/fullchain.pem (and options-ssl-nginx.conf / ssl-dhparams.pem)
+        // resolve during `nginx -t`. The path rewrite below only touches /etc/nginx/, so without this
+        // a perfectly valid TLS vhost would fail validation with "cannot load certificate ... No such
+        // file". Linking (read-only) the genuine dir is safer than rewriting cert paths to a sandbox
+        // copy that does not contain the certs.
+        try {
+          const dest = path.join(sandboxDir, "etc", "letsencrypt");
+          if (!fs.existsSync(dest) && fs.existsSync("/etc/letsencrypt")) {
+            fs.symlinkSync("/etc/letsencrypt", dest);
+          }
+        } catch (symErr) {
+          console.error("Failed to link letsencrypt:", symErr);
+        }
       };
 
       linkNginxModules();
 
-      // Function to rewrite paths inside configuration strings to the sandboxed path
+      // Function to rewrite absolute host paths inside configuration strings to their sandbox
+      // equivalents so `nginx -t` opens sandbox files instead of the live ones.
+      // FIX #7 / TODO: this rewrite is intentionally blunt — a global string replace also rewrites
+      // /etc/nginx/ that appears inside unrelated string literals (e.g. a log_format, an add_header
+      // value, or a proxy_pass URL path), and only handles the three prefixes below. /etc/letsencrypt
+      // is deliberately NOT rewritten — it is symlinked into the sandbox above so cert paths resolve
+      // as-is. A fully correct fix would rewrite only the *path arguments* of path-bearing directives
+      // (root/alias/include/ssl_certificate/…) via the AST rather than the raw text; left as a follow
+      // up to keep this change low-risk. The same caveat applies to the remote-SSH rewrite above.
       const rewritePaths = (content: string, isNginxConf = false): string => {
         let rewritten = content;
-        
+
         if (isNginxConf) {
           // Prepend modules-enabled include directive AT THE VERY TOP to load dynamic modules like stream!
           rewritten = "include /etc/nginx/modules-enabled/*.conf;\n" + rewritten;
@@ -1703,82 +1764,10 @@ async function startServer() {
     return remainingText;
   }
 
-  // ── Nginx config tokenizer ────────────────────────────────────────────────
-  // Tokens carry source offsets so blocks can record the span of their body in the original
-  // text. This lets us reproduce unrecognized blocks (e.g. lua/perl/njs code, custom config)
-  // verbatim — including comments — instead of re-serializing a mangled AST.
-  type NginxToken = { t: 'word' | ';' | '{' | '}'; v: string; start: number; end: number };
-  type NginxDirective = { type: 'directive'; name: string; args: string[] };
-  type NginxBlock     = { type: 'block'; name: string; args: string[]; children: NginxASTNode[]; start?: number; end?: number; bodyStart?: number; bodyEnd?: number };
-  type NginxASTNode   = NginxDirective | NginxBlock;
-
-  function tokenizeNginx(input: string, comments?: { start: number; end: number; v: string }[]): NginxToken[] {
-    const tokens: NginxToken[] = [];
-    let i = 0;
-    const len = input.length;
-    while (i < len) {
-      const ch = input[i];
-      if (ch === '#') {
-        const s = i;
-        while (i < len && input[i] !== '\n') i++;
-        if (comments) comments.push({ start: s, end: i, v: input.slice(s, i).trimEnd() });
-      } else if (/[\s\r\n\t]/.test(ch)) {
-        i++;
-      } else if (ch === ';') {
-        tokens.push({ t: ';', v: ';', start: i, end: i + 1 }); i++;
-      } else if (ch === '{') {
-        tokens.push({ t: '{', v: '{', start: i, end: i + 1 }); i++;
-      } else if (ch === '}') {
-        tokens.push({ t: '}', v: '}', start: i, end: i + 1 }); i++;
-      } else if (ch === '"' || ch === "'") {
-        const q = ch; let word = ''; const s = i; i++;
-        while (i < len && input[i] !== q) {
-          if (input[i] === '\\') i++;
-          word += input[i++];
-        }
-        i++;
-        tokens.push({ t: 'word', v: word, start: s, end: i });
-      } else {
-        const s = i; let word = '';
-        while (i < len && !/[\s\r\n\t;{}"'#]/.test(input[i])) word += input[i++];
-        if (word) tokens.push({ t: 'word', v: word, start: s, end: i });
-      }
-    }
-    return tokens;
-  }
-
-  function parseNginxAST(tokens: NginxToken[], inputLen = 0): NginxASTNode[] {
-    let pos = 0;
-    function parseNodes(): NginxASTNode[] {
-      const nodes: NginxASTNode[] = [];
-      while (pos < tokens.length && tokens[pos].t !== '}') {
-        const tok = tokens[pos];
-        if (tok.t !== 'word') { pos++; continue; }
-        const nameStart = tok.start;
-        const name = tok.v; pos++;
-        const args: string[] = [];
-        while (pos < tokens.length && tokens[pos].t === 'word') {
-          args.push(tokens[pos].v); pos++;
-        }
-        if (pos >= tokens.length) break;
-        if (tokens[pos].t === ';') {
-          pos++;
-          nodes.push({ type: 'directive', name, args });
-        } else if (tokens[pos].t === '{') {
-          const bodyStart = tokens[pos].end; // char right after '{'
-          pos++;
-          const children = parseNodes();
-          const closeTok = pos < tokens.length ? tokens[pos] : undefined;
-          const bodyEnd = closeTok ? closeTok.start : inputLen; // char of matching '}'
-          const nodeEnd = closeTok ? closeTok.end : inputLen;
-          if (closeTok) pos++;
-          nodes.push({ type: 'block', name, args, children, start: nameStart, end: nodeEnd, bodyStart, bodyEnd });
-        }
-      }
-      return nodes;
-    }
-    return parseNodes();
-  }
+  // ── Nginx config tokenizer/AST ────────────────────────────────────────────
+  // FIX #3: tokenizeNginx / parseNginxAST and the NginxToken/NginxASTNode/NginxDirective/NginxBlock
+  // types now live in ./src/utils/nginxParser (imported at the top of this file). reconstructASTNode
+  // below stays here because it is server-only serialization, not part of the pure parser.
 
   function reconstructASTNode(node: NginxASTNode, indent = ''): string {
     if (node.type === 'directive') {
@@ -2331,95 +2320,34 @@ async function startServer() {
     };
   }
 
-  const ORIGINAL_NGINX_CONF = `# Load copied Nginx modules, which include Lua script & caching support.
-include /etc/nginx/modules-enabled/10-mod-http-ndk.conf;
-include /etc/nginx/modules-enabled/50-mod-http-lua.conf;
-
-env APPLET_ID;
-env DISABLE_AUTH_BRIDGE;
+  // Generic baseline nginx.conf used when initializing a fresh install or when the host's
+  // nginx.conf is empty/unreadable. Plain stock-Debian layout — the panel manages real vhosts via
+  // sites-available/sites-enabled. (The old default was AI-Studio sandbox scaffolding — lua auth
+  // bridge, listen 8080 reverse proxy, sub_filter iframe injection — which has been removed.)
+  const ORIGINAL_NGINX_CONF = `# Generated by Nginx Flow Manager — baseline configuration.
+include /etc/nginx/modules-enabled/*.conf;
 
 worker_processes auto;
 
 events {
-    # We can most likely reduce this, but this is a good starting point.
-    worker_connections 512;
+    worker_connections 768;
 }
 
 http {
-    # Auth token cache for the AI Studio auth bridge. Note 1m is the cache size,
-    # not the TTL.
-    lua_shared_dict auth_token_cache 1m;
-    resolver 8.8.8.8;
+    sendfile on;
+    tcp_nopush on;
+    types_hash_max_size 2048;
 
-    server {
-        listen 8080;
-        proxy_http_version 1.1;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-        client_max_body_size 32M;
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
 
-        # Include shared auth bridge proxy and forbidden locations.
-        include /etc/nginx/nginx_auth.conf.include;
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
 
-        # Control plane API owned path prefix.
-        location /__aistudio_internal_control_plane/ {
-            proxy_pass http://localhost:8000/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Connection '';
-            proxy_http_version 1.1;
-            proxy_buffering off;
-            proxy_cache off;
-            proxy_set_header X-Accel-Buffering no;
-        }
+    gzip on;
 
-        # Serve the app for all other paths.
-        location / {
-            access_by_lua_file /etc/nginx/user_auth_verification.lua;
-            proxy_set_header Accept-Encoding "";
-            sub_filter '</head>' '<script src="/_aistudio-iframe.js"></script></head>';
-            sub_filter_once on;
-            sub_filter_types text/html;
-
-            gzip on;
-            gzip_vary on;
-            gzip_proxied any;
-            gzip_comp_level 4;
-            gzip_types text/plain text/css application/json application/javascript text/javascript image/svg+xml;
-
-            proxy_pass http://localhost:3000;
-            proxy_set_header Host localhost:3000;
-            proxy_set_header X-Forwarded-Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_intercept_errors on;
-            error_page 403 = /forbidden.html;
-            error_page 502 503 504 = /warmup.html;
-            add_header Content-Security-Policy "frame-ancestors 'self' https://*.google.com https://localhost.corp.google.com:26001;";
-        }
-
-        location /_aistudio-iframe.js {
-            alias /var/www/assets/_aistudio-iframe.js;
-            default_type application/javascript;
-            expires 1d;
-            add_header Cache-Control "public, no-transform";
-        }
-
-        location /warmup.html {
-            internal;
-            alias /var/www/assets/warmup.html;
-            default_type text/html;
-            add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0";
-            add_header Pragma "no-cache";
-            expires 0;
-        }
-    }
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
 }`;
 
   // API endpoint to retrieve full real file contents from direct OS Nginx directories
@@ -2695,7 +2623,12 @@ http {
     return null;
   }
   function saveAgentConfig(cfg: any) {
-    fs.writeFileSync(AGENT_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    // FIX #5: set mode 0o600 in the writeFile call itself. chmod-after leaves a window where the
+    // file (which holds the agent HMAC secret + restricted key) is briefly world-readable under the
+    // default umask. Passing mode to writeFileSync applies it at open()/create time.
+    fs.writeFileSync(AGENT_CONFIG_FILE, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+    // Re-assert in case the file pre-existed with looser perms (writeFile's mode only applies on
+    // creation; an existing file keeps its perms). No-op on Windows.
     try { fs.chmodSync(AGENT_CONFIG_FILE, 0o600); } catch (_) {}
   }
   function clearAgentConfig() {
@@ -3222,12 +3155,10 @@ http {
             const lowerCmt = raw.toLowerCase();
             // Ignore system generated / comment blocks
             if (
-              lowerCmt.includes("maestro nginx") || 
-              lowerCmt.includes("file: /etc/nginx") || 
-              lowerCmt.includes("generated by nginx") || 
-              lowerCmt.includes("custom global root directives") ||
-              lowerCmt.includes("load copied nginx modules") ||
-              lowerCmt.includes("lua script & caching support")
+              lowerCmt.includes("maestro nginx") ||
+              lowerCmt.includes("file: /etc/nginx") ||
+              lowerCmt.includes("generated by nginx") ||
+              lowerCmt.includes("custom global root directives")
             ) {
               return;
             }
@@ -3248,10 +3179,6 @@ http {
             isMuted = true;
           }
 
-          if (lower.includes("applet_id") || lower.includes("disable_auth_bridge")) {
-            isMuted = true;
-          }
-          
           if (!isMuted) {
             listMainCustom.push(raw);
           }
@@ -3391,7 +3318,10 @@ http {
         let inDoubleQuote = false;
         let inComment = false;
 
-        // System comments we want to ignore (not import to custom_directives)
+        // System comments we want to ignore (not import to custom_directives). These are generic
+        // NFM-compiler / stock-nginx comment phrases. AI-Studio-specific phrases (auth bridge,
+        // control plane, _aistudio-iframe.js, warmup.html, frame-ancestors, …) were removed along
+        // with the AI-Studio scaffolding.
         const ignoredComments = [
           "mime mappings",
           "logging standards",
@@ -3400,18 +3330,7 @@ http {
           "compression gzip standards",
           "virtual host inclusions",
           "custom global http directives",
-          "nginx virtual host configuration",
-          "auth token cache",
-          "not the ttl",
-          "ai studio auth bridge",
-          "resolver",
-          "mandatory system",
-          "control plane api",
-          "serve the app",
-          "user_auth_verification.lua",
-          "warmup.html",
-          "_aistudio-iframe.js",
-          "frame-ancestors"
+          "nginx virtual host configuration"
         ];
 
         const addCustomFragment = (frag: string) => {
@@ -3826,7 +3745,58 @@ http {
     if (appConfig.remoteMode) {
       addDeployLog("deploy-start", `Iniciando despliegue remoto SSH a ${appConfig.remoteHost}...`, "info");
       const ssh = getSshConfig();
+
+      // FIX deploy-rollback: give the legacy-SSH path the same safety envelope the agent's
+      // configDeploy has — back up the current config first, write + nginx -t, and on failure RESTORE
+      // the backup and reload so a bad config never stays live. Previously this branch wrote files and
+      // reloaded with NO backup/rollback at all. Mirrors agent/src/ops.ts configDeploy semantics over
+      // sshExec: an atomic stage→swap restore (cp backup to staging, mv broken aside, mv staging in),
+      // reported honestly as rolledBack / rollbackFailed.
+      const stamp = Date.now();
+      const backupDir = `${NGINX_DIR}.nfm-backup-${stamp}`; // sibling of NGINX_DIR (same fs → atomic rename later)
+      let backupOk = false;
+
+      // Atomic restore of the backup over NGINX_DIR, then reload. Returns whether the restore failed
+      // and any stderr to surface. All interpolated paths are shQuoted (SEC C3).
+      const sshRestore = async (): Promise<{ failed: boolean; stderr: string }> => {
+        if (!backupOk) return { failed: true, stderr: "no había backup utilizable para restaurar" };
+        const staging = `${NGINX_DIR}.nfm-restore-${stamp}`;
+        const aside = `${NGINX_DIR}.nfm-broken-${stamp}`;
+        await sshExec(ssh, `rm -rf ${shQuote(staging)} ${shQuote(aside)}`);
+        const cp = await sshExec(ssh, `cp -a ${shQuote(backupDir)} ${shQuote(staging)}`);
+        if (cp.code !== 0) {
+          await sshExec(ssh, `rm -rf ${shQuote(staging)}`);
+          return { failed: true, stderr: `restore: copia de backup falló: ${cp.stderr || cp.stdout}`.trim() };
+        }
+        const mvAside = await sshExec(ssh, `mv -f ${shQuote(NGINX_DIR)} ${shQuote(aside)}`);
+        if (mvAside.code !== 0) {
+          await sshExec(ssh, `rm -rf ${shQuote(staging)}`);
+          return { failed: true, stderr: `restore: no se pudo apartar config rota: ${mvAside.stderr || mvAside.stdout}`.trim() };
+        }
+        const mvIn = await sshExec(ssh, `mv -f ${shQuote(staging)} ${shQuote(NGINX_DIR)}`);
+        if (mvIn.code !== 0) {
+          await sshExec(ssh, `mv -f ${shQuote(aside)} ${shQuote(NGINX_DIR)}; rm -rf ${shQuote(staging)}`);
+          return { failed: true, stderr: `restore: no se pudo instalar backup: ${mvIn.stderr || mvIn.stdout}`.trim() };
+        }
+        await sshExec(ssh, `rm -rf ${shQuote(aside)}`);
+        const reload = await sshExec(ssh, `${shQuote(NGINX_BINARY)} -s reload 2>&1`);
+        if (reload.code !== 0) {
+          return { failed: true, stderr: `restore: recarga tras restaurar falló: ${reload.stderr || reload.stdout}`.trim() };
+        }
+        return { failed: false, stderr: "" };
+      };
+
       try {
+        // 0. Backup the current /etc/nginx before touching anything (cp -a preserves symlinks/perms).
+        await sshExec(ssh, `rm -rf ${shQuote(backupDir)}`);
+        const bk = await sshExec(ssh, `cp -a ${shQuote(NGINX_DIR)} ${shQuote(backupDir)}`);
+        backupOk = bk.code === 0;
+        if (backupOk) {
+          addDeployLog("deploy-backup", `Copia de seguridad remota creada en ${backupDir}.`, "success");
+        } else {
+          addDeployLog("deploy-backup", `Advertencia: falló el backup remoto (${bk.stderr || bk.stdout}). Continuando sin red de seguridad...`, "warn");
+        }
+
         // Write all files via SFTP
         // SEC C2: confine each /etc/nginx/* key to within the real NGINX_DIR (path.replace alone did
         // not stop "../" traversal); skip + log anything that escapes. SFTP write — no shell needed.
@@ -3865,21 +3835,39 @@ http {
         // SEC C3: NGINX_BINARY validated at setup; quoted here as defense-in-depth.
         const { stdout: testOut, stderr: testErr, code: testCode } = await sshExec(ssh, `${shQuote(NGINX_BINARY)} -t 2>&1`);
         if (testCode !== 0) {
-          addDeployLog("nginx-test", `nginx -t falló en remoto: ${testErr || testOut}`, "error");
-          return res.json({ success: false, error: `nginx -t falló: ${testErr || testOut}`, stdout: testOut, stderr: testErr });
+          addDeployLog("nginx-test", `nginx -t falló en remoto: ${testErr || testOut}. Restaurando backup...`, "error");
+          // FIX deploy-rollback: restore the pre-deploy config instead of leaving the broken one live.
+          const rb = await sshRestore();
+          if (rb.failed) addDeployLog("deploy-rollback-failed", `❌ RESTAURACIÓN FALLÓ: ${rb.stderr}`, "error");
+          else addDeployLog("deploy-rollback-success", "✅ Configuración previa restaurada y recargada en el remoto.", "success");
+          await sshExec(ssh, `rm -rf ${shQuote(backupDir)}`);
+          return res.json({ success: false, rolledBack: true, rollbackFailed: rb.failed, error: `nginx -t falló: ${testErr || testOut}`, stdout: testOut, stderr: rb.failed ? `${testErr}\n${rb.stderr}`.trim() : testErr });
         }
         addDeployLog("nginx-test", "nginx -t OK en servidor remoto.", "success");
 
         // Reload nginx
         const { stdout: reloadOut, stderr: reloadErr, code: reloadCode } = await sshExec(ssh, `${shQuote(NGINX_BINARY)} -s reload 2>&1`); // SEC C3
         if (reloadCode !== 0) {
-          return res.json({ success: false, error: `nginx reload falló: ${reloadErr || reloadOut}`, stdout: reloadOut, stderr: reloadErr });
+          addDeployLog("nginx-reload", `nginx reload falló en remoto: ${reloadErr || reloadOut}. Restaurando backup...`, "error");
+          // FIX deploy-rollback: a reload failure leaves the new (bad) files on disk — roll back.
+          const rb = await sshRestore();
+          if (rb.failed) addDeployLog("deploy-rollback-failed", `❌ RESTAURACIÓN FALLÓ: ${rb.stderr}`, "error");
+          else addDeployLog("deploy-rollback-success", "✅ Configuración previa restaurada y recargada en el remoto.", "success");
+          await sshExec(ssh, `rm -rf ${shQuote(backupDir)}`);
+          return res.json({ success: false, rolledBack: true, rollbackFailed: rb.failed, error: `nginx reload falló: ${reloadErr || reloadOut}`, stdout: reloadOut, stderr: rb.failed ? `${reloadErr}\n${rb.stderr}`.trim() : reloadErr });
         }
         addDeployLog("nginx-reload", `Nginx recargado exitosamente en ${appConfig.remoteHost}.`, "success");
+        await sshExec(ssh, `rm -rf ${shQuote(backupDir)}`); // deploy succeeded — drop the backup
         return res.json({ success: true, stdout: reloadOut, stderr: reloadErr });
       } catch (err: any) {
-        addDeployLog("deploy-error", `Error SSH durante despliegue: ${err.message}`, "error");
-        return res.status(500).json({ success: false, error: `Error SSH: ${err.message}` });
+        addDeployLog("deploy-error", `Error SSH durante despliegue: ${err.message}. Intentando restaurar backup...`, "error");
+        // FIX deploy-rollback: on an unexpected SSH error mid-deploy, attempt to restore so we don't
+        // leave a partially-written config live; report whether the restore itself succeeded.
+        const rb = await sshRestore().catch((re: any) => ({ failed: true, stderr: String(re?.message || re) }));
+        if (rb.failed) addDeployLog("deploy-rollback-failed", `❌ RESTAURACIÓN FALLÓ: ${rb.stderr}`, "error");
+        else addDeployLog("deploy-rollback-success", "✅ Configuración previa restaurada en el remoto.", "success");
+        try { await sshExec(ssh, `rm -rf ${shQuote(backupDir)}`); } catch (_) {}
+        return res.status(500).json({ success: false, rolledBack: true, rollbackFailed: rb.failed, error: `Error SSH: ${err.message}`, stderr: rb.failed ? rb.stderr : undefined });
       }
     }
 
@@ -3920,91 +3908,11 @@ http {
             // Windows, which would produce an invalid include for the (Linux) nginx host.
             writeContent = `include ${path.posix.join(NGINX_DIR, "modules-enabled")}/*.conf;\n` + writeContent;
           }
-          // Comment out any "user <user>;" directive to prevent getpwnam errors inside the container
-          writeContent = writeContent.replace(/^\s*user\s+[^;]+;/gm, "# user commented_out_for_deployment;");
-
-          // CRITICAL: Ensure the AI Studio internal reverse proxy on port 8080 is NEVER dropped.
-          // This block is absolutely necessary to route traffic to localhost:3000 (applet) and localhost:8000 (control plane)
-          if (!writeContent.includes("listen 8080")) {
-            const server8080Block = `
-    # AI Studio internal reverse proxy router (MANDATORY SYSTEM DEPLOYMENT BLOCK)
-    server {
-        listen 8080;
-        proxy_http_version 1.1;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-        client_max_body_size 32M;
-
-        # Include shared auth bridge proxy and forbidden locations if present.
-        # SEC L3: POSIX include path so a Windows panel host does not emit backslashes for the Linux nginx.
-        include ${path.posix.join(NGINX_DIR, "nginx_auth.conf.include")};
-
-        # Execute auth verification if the script exists
-        # access_by_lua_file /etc/nginx/user_auth_verification.lua;
-
-        location /__aistudio_internal_control_plane/ {
-            proxy_pass http://localhost:8000/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Connection '';
-            proxy_http_version 1.1;
-            proxy_buffering off;
-            proxy_cache off;
-            proxy_set_header X-Accel-Buffering no;
-        }
-
-        location / {
-            proxy_set_header Accept-Encoding "";
-            sub_filter '</head>' '<script src="/_aistudio-iframe.js"></script></head>';
-            sub_filter_once on;
-            sub_filter_types text/html;
-
-            gzip on;
-            gzip_vary on;
-            gzip_proxied any;
-            gzip_comp_level 4;
-            gzip_types text/plain text/css application/json application/javascript text/javascript image/svg+xml;
-
-            proxy_pass http://localhost:3000;
-            proxy_set_header Host localhost:3000;
-            proxy_set_header X-Forwarded-Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_intercept_errors on;
-            error_page 403 = /forbidden.html;
-            error_page 502 503 504 = /warmup.html;
-            add_header Content-Security-Policy "frame-ancestors 'self' https://*.google.com https://localhost.corp.google.com:26001;";
-        }
-
-        location /_aistudio-iframe.js {
-            alias /var/www/assets/_aistudio-iframe.js;
-            default_type application/javascript;
-            expires 1d;
-            add_header Cache-Control "public, no-transform";
-        }
-
-        location /warmup.html {
-            internal;
-            alias /var/www/assets/warmup.html;
-            default_type text/html;
-            add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0";
-            add_header Pragma "no-cache";
-            expires 0;
-        }
-    }
-`;
-            // Insert it just before the closing brace of the http { ... } context
-            const lastClosingBrace = writeContent.lastIndexOf("}");
-            if (lastClosingBrace !== -1) {
-              writeContent = writeContent.substring(0, lastClosingBrace) + server8080Block + "\n" + writeContent.substring(lastClosingBrace);
-            }
-          }
+          // NOTE: the AI-Studio "listen 8080" reverse-proxy block (sub_filter iframe injection,
+          // control-plane proxy, lua auth bridge, warmup.html) and the "user <user>;" commenting hack
+          // that supported it were REMOVED here — they were dead sandbox scaffolding. We now deploy the
+          // user's nginx.conf verbatim (apart from the modules-enabled include) so the deployed config
+          // matches what the user authored. The panel itself keeps serving over HTTPS independently.
         }
 
         try {
@@ -4013,10 +3921,11 @@ http {
           addDeployLog(`Escritura de archivo: ${filePath}`, `Escritos ${writeContent.length} caracteres con éxito en ${actualWritePath}.`, "success");
         } catch (writeErr: any) {
           addDeployLog(`Escritura de archivo: ${filePath}`, `Error al escribir el archivo: ${writeErr.message}`, "error");
-          await restoreAndReloadNginxConfig(addDeployLog);
+          const rbOk = await restoreAndReloadNginxConfig(addDeployLog);
           return res.status(500).json({
             success: false,
-            error: `Failed to write ${filePath} (mapped: ${actualWritePath}): ${writeErr.message}. Sistema restaurado.`
+            rollbackFailed: !rbOk,
+            error: `Failed to write ${filePath} (mapped: ${actualWritePath}): ${writeErr.message}. ${rbOk ? "Sistema restaurado." : "⚠️ LA RESTAURACIÓN TAMBIÉN FALLÓ — la configuración puede haber quedado inconsistente."}`
           });
         }
       }
@@ -4100,10 +4009,11 @@ http {
         if (testErr) {
           addDeployLog(testCmd, `Fallo en el test general de sintaxis Nginx:\n${testOutput}`, "error");
           // Ejecutar autorecuperación
-          await restoreAndReloadNginxConfig(addDeployLog);
+          const rbOk = await restoreAndReloadNginxConfig(addDeployLog);
           return res.json({
             success: false,
-            error: "La sintaxis integrada final es inválida: " + testErr.message + ". Restablecido al backup estable automáticamente.",
+            rollbackFailed: !rbOk,
+            error: "La sintaxis integrada final es inválida: " + testErr.message + (rbOk ? ". Restablecido al backup estable automáticamente." : ". ⚠️ LA REVERSIÓN TAMBIÉN FALLÓ — la configuración puede haber quedado inconsistente."),
             stdout: testStdout,
             stderr: testStderr
           });
@@ -4128,10 +4038,11 @@ http {
               const startOutput = (startStderr || "") + (startStdout || "");
               if (startErr) {
                 addDeployLog(startCmd, `Fallo total al arrancar servicio Nginx:\n${startOutput}`, "error");
-                await restoreAndReloadNginxConfig(addDeployLog);
+                const rbOk = await restoreAndReloadNginxConfig(addDeployLog);
                 return res.json({
                   success: false,
-                  error: "Fallo al recargar y/o iniciar Nginx en frío: " + startErr.message + ". Restablecido al backup estable automáticamente.",
+                  rollbackFailed: !rbOk,
+                  error: "Fallo al recargar y/o iniciar Nginx en frío: " + startErr.message + (rbOk ? ". Restablecido al backup estable automáticamente." : ". ⚠️ LA REVERSIÓN TAMBIÉN FALLÓ — la configuración puede haber quedado inconsistente."),
                   stdout: startStdout,
                   stderr: startOutput
                 });
@@ -4143,10 +4054,11 @@ http {
                 const healthResult = await verifyApplicationHealth();
                 if (!healthResult.healthy) {
                   addDeployLog("health-check-failed", `⚠️ Panel inaccesible o inestable: ${healthResult.reason}. Iniciando reversión...`, "error");
-                  await restoreAndReloadNginxConfig(addDeployLog);
+                  const rbOk = await restoreAndReloadNginxConfig(addDeployLog);
                   return res.json({
                     success: false,
-                    error: `La nueva configuración comprometía la accesibilidad del administrador: ${healthResult.reason}. Revertido con éxito.`,
+                    rollbackFailed: !rbOk,
+                    error: `La nueva configuración comprometía la accesibilidad del administrador: ${healthResult.reason}.${rbOk ? " Revertido con éxito." : " ⚠️ LA REVERSIÓN TAMBIÉN FALLÓ — la configuración puede haber quedado inconsistente."}`,
                     stdout: startStdout,
                     stderr: startOutput
                   });
@@ -4168,10 +4080,11 @@ http {
             verifyApplicationHealth().then(async (healthResult) => {
               if (!healthResult.healthy) {
                 addDeployLog("health-check-failed", `⚠️ Panel inaccesible o inestable: ${healthResult.reason}. Iniciando reversión...`, "error");
-                await restoreAndReloadNginxConfig(addDeployLog);
+                const rbOk = await restoreAndReloadNginxConfig(addDeployLog);
                 return res.json({
                   success: false,
-                  error: `La nueva configuración comprometía la accesibilidad del administrador: ${healthResult.reason}. Revertido con éxito.`,
+                  rollbackFailed: !rbOk,
+                  error: `La nueva configuración comprometía la accesibilidad del administrador: ${healthResult.reason}.${rbOk ? " Revertido con éxito." : " ⚠️ LA REVERSIÓN TAMBIÉN FALLÓ — la configuración puede haber quedado inconsistente."}`,
                   stdout: reloadStdout,
                   stderr: reloadStderr
                 });
@@ -4190,10 +4103,11 @@ http {
 
     } catch (err: any) {
       addDeployLog("deploy-error", `Fallo crítico inesperado: ${err.message}`, "error");
-      await restoreAndReloadNginxConfig(addDeployLog);
+      const rbOk = await restoreAndReloadNginxConfig(addDeployLog);
       return res.status(500).json({
         success: false,
-        error: err.message + ". Restaurado backup de seguridad preventivo."
+        rollbackFailed: !rbOk,
+        error: err.message + (rbOk ? ". Restaurado backup de seguridad preventivo." : ". ⚠️ LA REVERSIÓN TAMBIÉN FALLÓ — la configuración puede haber quedado inconsistente.")
       });
     }
   });
