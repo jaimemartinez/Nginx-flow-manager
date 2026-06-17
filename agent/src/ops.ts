@@ -198,10 +198,48 @@ export class Ops {
       }
     } catch { /* pruning is best-effort; never block a deploy */ }
 
-    const restore = async () => {
-      await run('rm', ['-rf', this.cfg.nginxDir]);
-      await run('cp', ['-a', backup, this.cfg.nginxDir]);
-      await run(this.cfg.nginxBin, ['-s', 'reload']);
+    // FIX deploy-rollback: a restore that silently fails is worse than no restore — it leaves a
+    // broken config live while configDeploy claims it rolled back. Make every step check its exit
+    // code, and prefer an ATOMIC swap (stage a copy of the backup, then rename it into place) over
+    // the old destructive `rm -rf nginxDir; cp -a`. The old sequence left a window in which
+    // /etc/nginx did not exist at all, and a failed `cp` there was unrecoverable. Here we move the
+    // broken dir aside first (so we can put it back if staging fails) and only rename the restored
+    // tree into place once it is fully built — `rename(2)` on the same filesystem is atomic.
+    // Returns { failed, stderr } so the caller can report rollbackFailed honestly.
+    const restore = async (): Promise<{ failed: boolean; stderr: string }> => {
+      const nginxDir = this.cfg.nginxDir;
+      const staging = `${nginxDir}.nfm-restore-${stamp}`;
+      const aside = `${nginxDir}.nfm-broken-${stamp}`;
+      // Clean any leftovers from a previous interrupted restore so rename/cp start clean.
+      await run('rm', ['-rf', staging, aside]);
+      // 1. Stage a full copy of the backup next to nginxDir (same fs → the later rename is atomic).
+      const cp = await run('cp', ['-a', backup, staging]);
+      if (cp.code !== 0) {
+        await run('rm', ['-rf', staging]); // leave the (broken) live dir untouched — better than gone
+        return { failed: true, stderr: `restore: copia de backup falló: ${cp.stderr}`.trim() };
+      }
+      // 2. Move the broken live dir aside, then rename staging into place. Keeping the broken dir
+      //    lets us roll the rollback back if the second rename somehow fails.
+      const mvAside = await run('mv', ['-f', nginxDir, aside]);
+      if (mvAside.code !== 0) {
+        await run('rm', ['-rf', staging]);
+        return { failed: true, stderr: `restore: no se pudo apartar config rota: ${mvAside.stderr}`.trim() };
+      }
+      const mvIn = await run('mv', ['-f', staging, nginxDir]);
+      if (mvIn.code !== 0) {
+        // Put the broken dir back so /etc/nginx still exists (broken but present > absent).
+        await run('mv', ['-f', aside, nginxDir]);
+        await run('rm', ['-rf', staging]);
+        return { failed: true, stderr: `restore: no se pudo instalar backup: ${mvIn.stderr}`.trim() };
+      }
+      await run('rm', ['-rf', aside]); // restored tree is live — drop the broken copy
+      // 3. Reload onto the restored (known-good) config. A reload failure here does NOT mean the
+      //    files are wrong — they are the previously-good backup — but we still surface its stderr.
+      const reload = await run(this.cfg.nginxBin, ['-s', 'reload']);
+      if (reload.code !== 0) {
+        return { failed: true, stderr: `restore: recarga tras restaurar falló: ${reload.stderr}`.trim() };
+      }
+      return { failed: false, stderr: '' };
     };
 
     try {
@@ -250,23 +288,31 @@ export class Ops {
       const test = await run(this.cfg.nginxBin, ['-t']);
       if (test.code !== 0) {
         log(`nginx -t FALLÓ — restaurando backup`);
-        await restore();
-        return { ok: false, rolledBack: true, stdout: test.stdout, stderr: test.stderr, logs };
+        // FIX deploy-rollback: report whether the restore itself succeeded instead of always
+        // claiming rolledBack:true. rolledBack stays true (we attempted and the files are back);
+        // rollbackFailed signals the restore copy/reload did NOT complete and live config is suspect.
+        const rb = await restore();
+        if (rb.failed) log(`RESTAURACIÓN FALLÓ: ${rb.stderr}`);
+        return { ok: false, rolledBack: true, rollbackFailed: rb.failed, stdout: test.stdout, stderr: rb.failed ? `${test.stderr}\n${rb.stderr}`.trim() : test.stderr, logs };
       }
       log('nginx -t OK');
       // 5. Reload
       const reload = await run(this.cfg.nginxBin, ['-s', 'reload']);
       if (reload.code !== 0) {
         log('reload FALLÓ — restaurando backup');
-        await restore();
-        return { ok: false, rolledBack: true, stdout: reload.stdout, stderr: reload.stderr, logs };
+        const rb = await restore();
+        if (rb.failed) log(`RESTAURACIÓN FALLÓ: ${rb.stderr}`);
+        return { ok: false, rolledBack: true, rollbackFailed: rb.failed, stdout: reload.stdout, stderr: rb.failed ? `${reload.stderr}\n${rb.stderr}`.trim() : reload.stderr, logs };
       }
       log('nginx recargado ✓');
-      return { ok: true, rolledBack: false, logs };
+      return { ok: true, rolledBack: false, rollbackFailed: false, logs };
     } catch (e: any) {
       log(`Error: ${e.message} — restaurando backup`);
-      await restore().catch(() => {});
-      return { ok: false, rolledBack: true, error: e.message, logs };
+      // restore() no longer throws (it returns a status), but guard anyway so an unexpected throw
+      // still yields an honest rollbackFailed:true rather than swallowing the rollback outcome.
+      const rb = await restore().catch((re: any) => ({ failed: true, stderr: String(re?.message || re) }));
+      if (rb.failed) log(`RESTAURACIÓN FALLÓ: ${rb.stderr}`);
+      return { ok: false, rolledBack: true, rollbackFailed: rb.failed, error: e.message, stderr: rb.failed ? rb.stderr : undefined, logs };
     }
   }
 
