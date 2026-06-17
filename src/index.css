@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom scrollbars suitable for Geometric Balance */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0A0B;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #242428;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #343438;
+}
+
+/* React Flow custom panel and overrides to fit dark grid */
+.react-flow__background {
+  background-color: #0A0A0B !important;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2 !important;
+  transition: stroke 0.15s ease;
+}
+
+.react-flow__controls-button {
+  background-color: #121214 !important;
+  color: #c0c0c5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #1A1A1D !important;
+  color: #ffffff !important;
+}
+
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid #0A0A0B !important;
+}
