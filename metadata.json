@@ -1,0 +1,8 @@
+{
+  "name": "Remix:  Nginx Flow Manager APP 2",
+  "description": "Visual multi-site Nginx configuration compiler and topology editor powered by React Flow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

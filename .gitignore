@@ -1,0 +1,23 @@
+node_modules/
+build/
+dist/
+coverage/
+# Local tooling / agent config (not part of the project)
+.claude/
+# Generated knowledge-graph output (regenerate with `graphify update .`)
+graphify-out/
+.DS_Store
+*.log
+.env*
+!.env.example
+certs/
+app-config.json
+workspace-state.json
+# Secrets — agent SSH private key + HMAC secret (NEVER commit)
+agent-config.json
+# Key / certificate material (defense-in-depth)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
