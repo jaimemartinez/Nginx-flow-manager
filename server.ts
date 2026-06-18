@@ -21,7 +21,7 @@ import { tokenizeNginx, parseNginxAST, NginxASTNode, NginxDirective } from "./sr
 import { parseNginxConfig } from "./src/utils/nginxImport";
 // FIX #1: secrets-at-rest. encrypt/decrypt SSH password, SSH key, agent privateKey + secret at the
 // load/save boundary. decryptSecret() passes plaintext through, so existing configs keep working.
-import { encryptSecret, decryptSecret } from "./src/utils/secretStore";
+import { encryptSecret, decryptSecret, isEncrypted } from "./src/utils/secretStore";
 // FIX #5: AST-aware sandbox path rewrite + runtime-directive neutralization, shared by the local and
 // remote-SSH validation sandboxes (replaces the blunt global `/etc/nginx/` string replace).
 import { rewriteSandboxPaths, neutralizeRuntimeDirectives } from "./src/utils/sandboxRewrite";
@@ -111,6 +111,11 @@ async function startServer() {
         // un-encrypted app-config.json keeps loading fine and is migrated to ciphertext on next save.
         cfg.remotePassword = decryptSecret(cfg.remotePassword || "");
         cfg.remoteSshKey = decryptSecret(cfg.remoteSshKey || "");
+        // Loud warning if a tagged secret couldn't be decrypted (master key unavailable) — otherwise
+        // remote SSH fails cryptically. Re-key via setup/reinstall to fix.
+        if (isEncrypted(cfg.remotePassword) || isEncrypted(cfg.remoteSshKey)) {
+          console.error("[nfm] WARNING: app-config.json secrets could not be DECRYPTED (master key unavailable for this OS user). Remote SSH will fail until the credentials are re-saved (re-enter them in setup).");
+        }
         return cfg;
       }
     } catch (err) {
@@ -1874,6 +1879,13 @@ http {
         if (cfg && typeof cfg === "object") {
           if (typeof cfg.privateKey === "string") cfg.privateKey = decryptSecret(cfg.privateKey);
           if (typeof cfg.secret === "string") cfg.secret = decryptSecret(cfg.secret);
+          // If a tagged secret could NOT be decrypted (master key missing — e.g. the panel now runs
+          // under a different OS user, or certs/nfm-master.key was lost), decryptSecret returns the
+          // ciphertext unchanged. Using that as the SSH key/HMAC secret fails with a cryptic
+          // "Timed out while waiting for handshake". Surface it loudly so it's diagnosable.
+          if (isEncrypted(cfg.privateKey) || isEncrypted(cfg.secret)) {
+            console.error("[nfm-agent] WARNING: agent-config.json secrets could not be DECRYPTED (master key unavailable). The agent will be UNREACHABLE (SSH handshake will time out) until you reinstall the agent (Reinstalar / rotar clave) to re-key it.");
+          }
         }
         return cfg;
       }
