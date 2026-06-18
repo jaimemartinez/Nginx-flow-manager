@@ -396,6 +396,14 @@ export class Ops {
     return { ok: r.code === 0, stdout: r.stdout, stderr: r.stderr, dryRun: !!p.dryRun };
   }
 
+  async certsDelete(p: { certName: string }) {
+    // certName is validated panel-side; re-validate here (defense in depth). argv only, no shell.
+    if (!p.certName || !/^[a-zA-Z0-9._*-]+$/.test(p.certName)) throw new Error('nombre de certificado inválido');
+    const args = ['delete', '--non-interactive', '--cert-name', p.certName];
+    const r = await run(this.cfg.certbotBin, args);
+    return { ok: r.code === 0, stdout: r.stdout, stderr: r.stderr, command: `${this.cfg.certbotBin} ${args.join(' ')}` };
+  }
+
   // ---- drift detection ----
   /** Hash of every file under /etc/nginx, so the app can detect out-of-band manual edits. */
   async driftSnapshot() {
