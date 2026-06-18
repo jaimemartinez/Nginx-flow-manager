@@ -33,9 +33,9 @@ interface OpsConfig {
   letsencryptDir?: string; // /etc/letsencrypt
 }
 
-function run(bin: string, args: string[], input?: string): Promise<{ stdout: string; stderr: string; code: number; spawnFailed: boolean }> {
+function run(bin: string, args: string[], input?: string, env?: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string; code: number; spawnFailed: boolean }> {
   return new Promise((resolve) => {
-    const child = execFile(bin, args, { maxBuffer: 16 * 1024 * 1024 }, (err: any, stdout, stderr) => {
+    const child = execFile(bin, args, { maxBuffer: 16 * 1024 * 1024, env: env ? { ...process.env, ...env } : undefined }, (err: any, stdout, stderr) => {
       const spawnFailed = !!(err && err.code === 'ENOENT'); // binary not present at all
       const code = err ? (typeof err.code === 'number' ? err.code : 1) : 0;
       resolve({ stdout: stdout || '', stderr: stderr || (err ? String(err.message || '') : ''), code, spawnFailed });
@@ -370,7 +370,21 @@ export class Ops {
     else { args.push('--webroot', '-w', validateWebroot(p.webroot)); }
     if (p.staging) args.push('--staging');
     for (const d of domains) args.push('-d', d);
-    const r = await run(this.cfg.certbotBin, args);
+    let r = await run(this.cfg.certbotBin, args);
+    // The certbot nginx plugin (python3-certbot-nginx) is often not installed. The agent runs as
+    // root, so when --nginx fails for that reason, install the plugin and retry once. argv only
+    // (no shell); DEBIAN_FRONTEND avoids any debconf prompt hanging the non-interactive run.
+    if (p.method === 'nginx' && r.code !== 0 &&
+        /nginx plugin does not appear to be installed|could not find a usable 'nginx'|the requested nginx plugin/i.test(`${r.stdout}\n${r.stderr}`)) {
+      await run('apt-get', ['update'], undefined, { DEBIAN_FRONTEND: 'noninteractive' });
+      const inst = await run('apt-get', ['install', '-y', 'python3-certbot-nginx'], undefined, { DEBIAN_FRONTEND: 'noninteractive' });
+      if (inst.code === 0) {
+        r = await run(this.cfg.certbotBin, args);
+        r.stdout = `[nfm-agent] python3-certbot-nginx instalado automáticamente; reintentando emisión.\n\n${r.stdout}`;
+      } else {
+        r.stderr = `${r.stderr}\n\n[nfm-agent] No se pudo instalar python3-certbot-nginx:\n${inst.stderr || inst.stdout}`;
+      }
+    }
     return { ok: r.code === 0, stdout: r.stdout, stderr: r.stderr, command: `${this.cfg.certbotBin} ${args.join(' ')}` };
   }
 
