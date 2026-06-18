@@ -307,7 +307,7 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
               title="Agente seguro del servidor (instalar / estado / streaming)"
             >
               <Cpu size={13} className="text-violet-400" />
-              <span className="hidden lg:inline">Agente</span>
+              <span className="hidden 2xl:inline">Agente</span>
             </button>
             <button
               onClick={() => setCertOpen(true)}
@@ -315,7 +315,7 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
               title="Gestionar certificados SSL (Let's Encrypt / certbot)"
             >
               <ShieldCheck size={13} className="text-[#009639]" />
-              <span className="hidden lg:inline">Certificados</span>
+              <span className="hidden 2xl:inline">Certificados</span>
             </button>
             <button
               onClick={() => setTlsOpen(true)}
@@ -323,7 +323,7 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
               title="Certificado HTTPS del propio panel (puerto 3000)"
             >
               <Lock size={13} className="text-sky-400" />
-              <span className="hidden lg:inline">HTTPS</span>
+              <span className="hidden 2xl:inline">HTTPS</span>
             </button>
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs text-emerald-400 font-mono">
