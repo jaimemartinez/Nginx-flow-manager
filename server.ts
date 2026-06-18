@@ -2364,6 +2364,28 @@ http {
     }
   });
 
+  // Delete an installed certificate (and its files) by cert name — so the user can remove an
+  // invalid/staging cert from the UI without dropping to a shell (`certbot delete`).
+  app.post("/api/certbot/delete", async (req, res) => {
+    const { certName } = req.body || {};
+    if (!certName || typeof certName !== "string" || certName.length > 253 || !/^[a-zA-Z0-9._*-]+$/.test(certName)) {
+      return res.status(400).json({ success: false, error: "Nombre de certificado inválido." });
+    }
+    try {
+      if (await useAgent()) {
+        const r = await agentCall("certs.delete", { certName });
+        addDeployLog("certbot-delete", `certs.delete ${certName}: ${r.ok ? "OK" : "falló"} [agente]`, r.ok ? "success" : "error");
+        return res.json({ success: r.ok, stdout: r.stdout, stderr: r.stderr, command: r.command });
+      }
+      const cmd = `certbot delete --non-interactive --cert-name ${shQuote(certName)}`;
+      const { stdout, stderr, code } = await runManagedShell(`${cmd} 2>&1`);
+      addDeployLog("certbot-delete", `certbot delete ${certName}: ${code === 0 ? "OK" : "falló"}`, code === 0 ? "success" : "error");
+      res.json({ success: code === 0, stdout, stderr, command: cmd });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // API endpoint to discover and parse the global nginx.conf configuration
   app.get("/api/discover-global", async (req, res) => {
     const isRemote = appConfig.remoteMode;

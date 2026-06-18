@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTopology } from '../context/TopologyContext';
 import { secureFetch } from '../utils/api';
-import { ShieldCheck, X, RefreshCw, Plus, AlertTriangle, CheckCircle2, Loader2, Lock } from 'lucide-react';
+import { ShieldCheck, X, RefreshCw, Plus, AlertTriangle, CheckCircle2, Loader2, Lock, Trash2 } from 'lucide-react';
 
 interface Cert {
   name: string;
@@ -80,6 +80,27 @@ export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
       });
       const data = await res.json();
       setOutput((data.command ? `$ ${data.command}\n\n` : '') + (data.stdout || data.stderr || data.error || ''));
+      setOutputOk(!!data.success);
+      if (data.success) fetchCerts();
+    } catch (err: any) {
+      setOutput('Error: ' + err.message); setOutputOk(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runDelete = async (certName: string) => {
+    setBusy(true);
+    setOutput(`Eliminando ${certName}...`);
+    setOutputOk(null);
+    try {
+      const res = await secureFetch('/api/certbot/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ certName }),
+      });
+      const data = await res.json();
+      setOutput((data.command ? `$ ${data.command}\n\n` : '') + (data.stdout || data.stderr || data.error || (data.success ? 'Certificado eliminado.' : '')));
       setOutputOk(!!data.success);
       if (data.success) fetchCerts();
     } catch (err: any) {
@@ -170,11 +191,21 @@ export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
                       </div>
                       <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">{c.domains.join(', ')}</div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className={`text-xs font-bold font-mono ${daysColor(c.daysLeft)}`}>
-                        {c.daysLeft != null ? `${c.daysLeft} días` : (c.valid ? 'válido' : 'inválido')}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <div className={`text-xs font-bold font-mono ${daysColor(c.daysLeft)}`}>
+                          {c.daysLeft != null ? `${c.daysLeft} días` : (c.valid ? 'válido' : 'inválido')}
+                        </div>
+                        <div className="text-[9px] text-slate-600 font-mono">{c.expiry.split('(')[0].trim()}</div>
                       </div>
-                      <div className="text-[9px] text-slate-600 font-mono">{c.expiry.split('(')[0].trim()}</div>
+                      <button
+                        onClick={() => askConfirmation('Eliminar certificado', `Ejecuta "certbot delete --cert-name ${c.name}" en el servidor: borra este certificado y sus archivos. Acción irreversible.`, () => runDelete(c.name))}
+                        disabled={busy}
+                        className="p-1.5 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-colors cursor-pointer disabled:opacity-40"
+                        title="Eliminar certificado"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 ))}

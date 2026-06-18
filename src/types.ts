@@ -62,6 +62,17 @@ export interface NginxHeader {
 }
 
 /**
+ * A single HTTP Basic Auth user (managed from the UI so no `htpasswd` CLI is needed). The
+ * password is hashed before storage; the compiler writes `username:hash` lines into the
+ * generated .htpasswd file and points auth_basic_user_file at it.
+ */
+export interface NginxBasicAuthUser {
+  id: string;
+  username: string;
+  hash: string; // pre-computed nginx-compatible password hash, written verbatim into .htpasswd
+}
+
+/**
  * Access control rule (ngx_http_access_module). Rules are evaluated top-to-bottom,
  * first match wins, so list order is significant and must be preserved.
  */
@@ -101,6 +112,7 @@ export type ServerNodeData = {
   auth_basic_enabled?: boolean;
   auth_basic?: string; // Realm name, e.g. 'Restricted Area'
   auth_basic_user_file?: string; // e.g. '/etc/nginx/.htpasswd'
+  auth_basic_users?: NginxBasicAuthUser[]; // UI-managed htpasswd entries (username + apr1 hash); the compiler emits the .htpasswd file so no CLI is needed
   auth_request_uri?: string; // e.g. '/auth' or '/api/auth-verify'
   auth_request_headers_forward?: { name: string; variable: string }[]; // headers to set from subrequest, e.g., name: 'X-User', variable: 'auth_user'
   rewrites?: NginxRewriteRule[];
