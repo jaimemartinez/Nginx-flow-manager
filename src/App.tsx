@@ -278,26 +278,29 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
           </button>
         </div>
 
-        {/* Real-time high level state summary labels */}
-        <div className="hidden md:flex items-center gap-4 text-xs font-mono">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs font-mono text-slate-300">
+        {/* Real-time high level state summary labels. The whole group never wraps/overlaps:
+            children are shrink-0 + nowrap, gaps tighten on smaller screens, and the verbose
+            informational badges drop out progressively (Daemon at 2xl, Hosts/Enabled at xl)
+            so the action buttons always fit. */}
+        <div className="hidden md:flex items-center gap-1.5 xl:gap-3 text-xs font-mono min-w-0 shrink-0">
+          <div className="hidden 2xl:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs font-mono text-slate-300 whitespace-nowrap shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
             Local Daemon Connected
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded text-slate-300">
+          <div className="hidden xl:flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded text-slate-300 whitespace-nowrap shrink-0">
             <Layers size={13} className="text-[#009639]" />
             <span className="text-slate-400">Hosts:</span>
             <strong className="text-white">{activeStats.totalSites}</strong>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded text-slate-300">
+          <div className="hidden xl:flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded text-slate-300 whitespace-nowrap shrink-0">
             <CheckCircle2 size={13} className="text-emerald-500" />
             <span className="text-slate-400">Enabled:</span>
             <strong className="text-emerald-400">{activeStats.enabledSites}</strong>
           </div>
-          
-          <div className="flex items-center gap-2 pl-2 border-l border-white/10">
+
+          <div className="flex items-center gap-1.5 xl:gap-2 pl-1.5 xl:pl-2 border-l border-white/10 shrink-0">
             <button
               onClick={() => setAgentOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-violet-500/15 rounded border border-white/10 hover:border-violet-500/30 text-xs text-slate-300 hover:text-violet-300 font-mono transition-all cursor-pointer"
