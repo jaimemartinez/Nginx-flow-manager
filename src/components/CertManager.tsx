@@ -39,6 +39,7 @@ export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
   const [method, setMethod] = useState<'webroot' | 'nginx'>('webroot');
   const [webroot, setWebroot] = useState('/var/www/html');
   const [staging, setStaging] = useState(true);
+  const [forceRenewal, setForceRenewal] = useState(false);
 
   const fetchCerts = useCallback(async () => {
     setLoading(true);
@@ -75,7 +76,7 @@ export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
       const res = await secureFetch('/api/certbot/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domains: list, email: email.trim(), method, webroot: webroot.trim(), staging }),
+        body: JSON.stringify({ domains: list, email: email.trim(), method, webroot: webroot.trim(), staging, forceRenewal }),
       });
       const data = await res.json();
       setOutput((data.command ? `$ ${data.command}\n\n` : '') + (data.stdout || data.stderr || data.error || ''));
@@ -242,6 +243,12 @@ export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" checked={staging} onChange={(e) => setStaging(e.target.checked)} className="accent-[#009639]" />
                 <span className="text-[11px] text-slate-300">Modo <strong className="text-amber-400">staging</strong> (prueba — recomendado primero, sin coste de rate-limit)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={forceRenewal} onChange={(e) => setForceRenewal(e.target.checked)} className="accent-[#009639]" />
+                <span className="text-[11px] text-slate-300">
+                  <strong className="text-sky-400">Forzar renovación</strong> (re-emite aunque ya exista — necesario para pasar de staging a producción o reparar un cert inválido)
+                </span>
               </label>
               <button
                 onClick={confirmIssue}

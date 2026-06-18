@@ -2282,7 +2282,7 @@ http {
   // Issue a new certificate. User-triggered; validates inputs strictly to avoid shell injection.
   // Supports --staging (test cert, no rate-limit cost) and webroot/nginx methods.
   app.post("/api/certbot/issue", async (req, res) => {
-    const { domains, email, method, webroot, staging } = req.body || {};
+    const { domains, email, method, webroot, staging, forceRenewal } = req.body || {};
     if (!Array.isArray(domains) || domains.length === 0) {
       return res.status(400).json({ success: false, error: "Se requiere al menos un dominio." });
     }
@@ -2308,12 +2308,16 @@ http {
       cmd += ` --webroot -w "${wr}"`;
     }
     if (staging) cmd += ` --staging`;
+    // --force-renewal re-issues even when the existing cert isn't near expiry — required to switch a
+    // staging cert to production (or repair an invalid one), where certbot otherwise no-ops with
+    // "Certificate not yet due for renewal".
+    if (forceRenewal) cmd += ` --force-renewal`;
     // SEC H2: shQuote the domains for consistency (the domain regex is already metachar-free).
     for (const d of domains) cmd += ` -d ${shQuote(d)}`;
     const displayCmd = cmd;
     try {
       if (await useAgent()) {
-        const r = await agentCall("certs.issue", { domains, email, method, webroot, staging });
+        const r = await agentCall("certs.issue", { domains, email, method, webroot, staging, forceRenewal });
         addDeployLog("certbot-issue", `certs.issue (${domains.join(", ")})${staging ? " [staging]" : ""}: ${r.ok ? "OK" : "falló"} [agente]`, r.ok ? "success" : "error");
         return res.json({ success: r.ok, stdout: r.stdout, stderr: r.stderr, command: r.command });
       }
