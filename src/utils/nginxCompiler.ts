@@ -544,8 +544,11 @@ function compileLocationRecursive(
     output += `${innerIndent}proxy_set_header Connection "upgrade";\n`;
   }
 
-  // try_files (e.g. SPA fallback). Works alongside root/alias actions.
-  if (lData.try_files && !locCustomHas(/^\s*try_files/m)) {
+  // try_files (e.g. SPA fallback) — ONLY for static-serving locations. It must NOT be emitted
+  // alongside proxy_pass / an upstream: try_files is evaluated first and serves a local file when
+  // one matches, so the request never reaches the proxy. A stale try_files left on a node after
+  // switching its action to Proxy Pass would otherwise silently break the reverse proxy.
+  if (lData.try_files && !isProxied && !locCustomHas(/^\s*try_files/m)) {
     // SEC M2: sanitize each whitespace-separated try_files token so a value cannot break out
     // of the directive/block. A normal SPA fallback ('$uri $uri/ /index.html') is unchanged.
     output += `${innerIndent}try_files ${sanitizeMultiToken(lData.try_files)};\n`;

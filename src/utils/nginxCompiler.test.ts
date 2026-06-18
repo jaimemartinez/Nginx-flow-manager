@@ -132,6 +132,56 @@ describe('compileNginxTopology — normal config', () => {
   });
 });
 
+describe('compileNginxTopology — try_files vs proxy_pass', () => {
+  it('does NOT emit try_files on a proxy_pass location (a stale field must not break the proxy)', () => {
+    // Reproduces the real bug: a location whose action was switched to Proxy Pass keeps its old
+    // try_files value. try_files is evaluated first and serves a local file when one matches, so
+    // emitting it next to proxy_pass silently prevents the request ever reaching the backend.
+    const loc = locationNode('l1', {
+      path: '/',
+      actionType: 'proxy_pass',
+      proxy_pass: 'https://10.10.0.2',
+      try_files: '$uri $uri/ /index.nginx-debian.html',
+    });
+    const server = serverNode('srv1', { server_name: 'iglesiabaq.org', listen: 443, ssl: true });
+    const out = compileNginxTopology(
+      makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    );
+    const conf = out[SITE_PATH];
+    expect(conf).toContain('proxy_pass https://10.10.0.2;');
+    expect(conf).not.toContain('try_files');
+  });
+
+  it('still emits try_files on a root (static) location', () => {
+    const loc = locationNode('l1', {
+      path: '/',
+      actionType: 'root',
+      root: '/var/www/app',
+      try_files: '$uri $uri/ /index.html',
+    });
+    const out = compileNginxTopology(
+      makeState({ nodes: [serverNode('srv1', {}), loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    );
+    const conf = out[SITE_PATH];
+    expect(conf).toContain('root /var/www/app;');
+    expect(conf).toContain('try_files $uri $uri/ /index.html;');
+  });
+
+  it('does NOT emit try_files on an upstream-connected location', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'none', try_files: '$uri $uri/ /index.html' });
+    const up = upstreamNode('u1', { name: 'backend', servers: [{ id: 's1', address: '10.0.0.5', port: 8080 }] });
+    const out = compileNginxTopology(
+      makeState({
+        nodes: [serverNode('srv1', {}), loc, up],
+        edges: [{ id: 'e1', source: 'srv1', target: 'l1' }, { id: 'e2', source: 'l1', target: 'u1' }],
+      }),
+    );
+    const conf = out[SITE_PATH];
+    expect(conf).toContain('proxy_pass http://backend;');
+    expect(conf).not.toContain('try_files');
+  });
+});
+
 describe('compileNginxTopology — SECURITY regressions', () => {
   it('escapes a double-quote in an auth_basic realm (no block breakout)', () => {
     const server = serverNode('srv1', {
