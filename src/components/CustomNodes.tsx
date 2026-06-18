@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps, Node, useNodes, useEdges, useUpdateNodeInternals } from '@xyflow/react';
 import { useTopology } from '../context/TopologyContext';
-import { ServerNodeData, LocationNodeData, UpstreamNodeData, UpstreamServer, NginxHeader, NginxRewriteRule, NginxAccessRule } from '../types';
+import { ServerNodeData, LocationNodeData, UpstreamNodeData, UpstreamServer, NginxHeader, NginxRewriteRule, NginxAccessRule, NginxBasicAuthUser } from '../types';
 import { Server, Route, Network, Plus, Trash2, Shield, ShieldAlert, Settings, HelpCircle, ChevronDown, ChevronUp, Lock, AlertTriangle, Maximize2, X, Eraser } from 'lucide-react';
 import { secureFetch } from '../utils/api';
 
@@ -467,11 +467,16 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
   );
 };
 
+// Compute the nginx-native {SHA} htpasswd hash client-side via Web Crypto. The plaintext
+// password never leaves the browser nor is stored — only this hash is persisted in the node.
+async function shaHtpasswd(password: string): Promise<string> { const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(password)); let bin = ''; new Uint8Array(buf).forEach(b => bin += String.fromCharCode(b)); return '{SHA}' + btoa(bin); }
+
 interface CustomAuthEditorProps {
   auth_mode?: 'none' | 'basic' | 'auth_request';
   auth_basic_enabled?: boolean;
   auth_basic?: string;
   auth_basic_user_file?: string;
+  auth_basic_users?: NginxBasicAuthUser[];
   auth_request_uri?: string;
   auth_request_headers_forward?: { name: string; variable: string }[];
   onChange: (field: string, val: any) => void;
@@ -482,11 +487,14 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
   auth_basic_enabled = false,
   auth_basic = '',
   auth_basic_user_file = '',
+  auth_basic_users = [],
   auth_request_uri = '',
   auth_request_headers_forward = [],
   onChange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [newUser, setNewUser] = useState('');
+  const [newPass, setNewPass] = useState('');
 
   // Derive active mode with fallbacks for backwards compatibility
   const activeMode = auth_mode !== 'none' && auth_mode ? auth_mode : (auth_basic_enabled ? 'basic' : 'none');
@@ -570,7 +578,58 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Archivo de contraseñas (auth_basic_user_file)</label>
+                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">
+                  Usuarios (.htpasswd gestionado){auth_basic_users.length > 0 ? ` (${auth_basic_users.length} usuario${auth_basic_users.length === 1 ? '' : 's'})` : ''}
+                </label>
+                <div className="flex flex-col gap-1">
+                  {auth_basic_users.map((u) => (
+                    <div key={u.id} className="flex items-center gap-1.5 bg-[#121214] border border-white/10 rounded px-2 py-1">
+                      <Lock size={9} className="shrink-0 text-slate-500" />
+                      <span className="text-slate-300 text-[10px] truncate flex-1 min-w-0">{u.username}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onChange('auth_basic_users', auth_basic_users.filter((x) => x.id !== u.id)); }}
+                        className="nodrag shrink-0 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                        title="Eliminar usuario"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] flex-1 min-w-0 focus:outline-none focus:border-[#009639]"
+                      value={newUser}
+                      onChange={(e) => setNewUser(e.target.value)}
+                      placeholder="usuario"
+                    />
+                    <input
+                      type="password"
+                      className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] flex-1 min-w-0 focus:outline-none focus:border-[#009639]"
+                      value={newPass}
+                      onChange={(e) => setNewPass(e.target.value)}
+                      placeholder="contraseña"
+                    />
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!newUser.trim() || !newPass) return;
+                        const hash = await shaHtpasswd(newPass);
+                        onChange('auth_basic_users', [...auth_basic_users, { id: Math.random().toString(36).slice(2), username: newUser.trim(), hash }]);
+                        setNewUser('');
+                        setNewPass('');
+                      }}
+                      className="nodrag shrink-0 bg-[#009639] hover:bg-[#00b347] text-white text-[9px] font-bold uppercase px-2 py-1 rounded transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      + Añadir
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Archivo .htpasswd manual (opcional — ignorado si hay usuarios arriba)</label>
                 <input
                   type="text"
                   className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] w-full focus:outline-none focus:border-[#009639]"
@@ -581,7 +640,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
               </div>
               <div className="text-[9px] text-slate-500 flex items-start gap-1 p-0.5 bg-white/2 rounded">
                 <Shield size={10} className="shrink-0 mt-0.5 text-slate-400" />
-                <span>Usa la herramienta `htpasswd` para encriptar claves.</span>
+                <span>Los usuarios añadidos arriba se hashean ({'{SHA}'}) y se escriben en un .htpasswd generado automáticamente — sin CLI.</span>
               </div>
             </div>
           )}
@@ -1513,6 +1572,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
           auth_basic_enabled={data.auth_basic_enabled}
           auth_basic={data.auth_basic || ''}
           auth_basic_user_file={data.auth_basic_user_file || ''}
+          auth_basic_users={data.auth_basic_users}
           auth_request_uri={data.auth_request_uri || ''}
           auth_request_headers_forward={data.auth_request_headers_forward || []}
           onChange={handleChange}
@@ -1847,6 +1907,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
           auth_basic_enabled={data.auth_basic_enabled}
           auth_basic={data.auth_basic || ''}
           auth_basic_user_file={data.auth_basic_user_file || ''}
+          auth_basic_users={data.auth_basic_users}
           auth_request_uri={data.auth_request_uri || ''}
           auth_request_headers_forward={data.auth_request_headers_forward || []}
           onChange={handleChange}
