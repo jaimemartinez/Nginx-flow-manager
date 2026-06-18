@@ -188,7 +188,16 @@ export const NginxCanvas: React.FC = () => {
   const recvRef = useRef(0);
   const animRef = useRef(0);
 
-  const trafficIndex = useMemo(() => buildTrafficIndex(nodes, edges), [nodes, edges]);
+  // Build the matching index from the ENTIRE topology (every site), NOT just the active canvas.
+  // With a per-site index, an event for another site's host falls into this site's single/default
+  // server (the fallback in matchEventToEdges) and animates the WRONG site. A global index routes
+  // each event to its real server; pulses for off-screen edges have no subscriber → harmless no-op,
+  // so the active canvas only animates traffic that actually belongs to it.
+  const trafficIndex = useMemo(() => {
+    const allNodes = state.sites.flatMap(s => s.nodes as any[]);
+    const allEdges = state.sites.flatMap(s => s.edges as any[]);
+    return buildTrafficIndex(allNodes, allEdges);
+  }, [state.sites]);
   const trafficIndexRef = useRef(trafficIndex);
   useEffect(() => { trafficIndexRef.current = trafficIndex; }, [trafficIndex]);
 
