@@ -59,6 +59,23 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
   const [tlsOpen, setTlsOpen] = useState(false);
   const [commitOpen, setCommitOpen] = useState(false);
 
+  // Real agent/daemon connection status for the header badge (polled, not the old hardcoded label).
+  const [agentStatus, setAgentStatus] = useState<'loading' | 'connected' | 'unreachable' | 'absent'>('loading');
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await secureFetch('/api/agent/status');
+        const d = await r.json();
+        if (cancelled) return;
+        setAgentStatus(!d.installed ? 'absent' : d.reachable ? 'connected' : 'unreachable');
+      } catch { if (!cancelled) setAgentStatus('absent'); }
+    };
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   useEffect(() => {
     const handleOpenCommit = () => {
       setCommitOpen(true);
@@ -283,10 +300,24 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
             informational badges drop out progressively (Daemon at 2xl, Hosts/Enabled at xl)
             so the action buttons always fit. */}
         <div className="hidden md:flex items-center gap-1.5 xl:gap-3 text-xs font-mono min-w-0 shrink-0">
-          <div className="hidden 2xl:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs font-mono text-slate-300 whitespace-nowrap shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
-            Local Daemon Connected
-          </div>
+          {(() => {
+            const m = {
+              loading:     { dot: 'bg-slate-500',                            text: 'Comprobando agente…', cls: 'text-slate-400' },
+              connected:   { dot: 'bg-emerald-500 shadow-[0_0_8px_#10b981]', text: 'Agente conectado',     cls: 'text-slate-300' },
+              unreachable: { dot: 'bg-amber-500 shadow-[0_0_8px_#f59e0b]',   text: 'Agente no responde',   cls: 'text-amber-300' },
+              absent:      { dot: 'bg-slate-600',                            text: 'Agente no instalado',  cls: 'text-slate-400' },
+            }[agentStatus];
+            return (
+              <button
+                onClick={() => setAgentOpen(true)}
+                title="Estado del agente seguro del servidor — clic para gestionar/instalar"
+                className={`hidden 2xl:flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 text-xs font-mono whitespace-nowrap shrink-0 cursor-pointer transition-colors ${m.cls}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${m.dot}`}></span>
+                {m.text}
+              </button>
+            );
+          })()}
 
           <div className="hidden xl:flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded text-slate-300 whitespace-nowrap shrink-0">
             <Layers size={13} className="text-[#009639]" />
