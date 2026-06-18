@@ -286,3 +286,40 @@ describe('compileNginxTopology — round-trip fidelity', () => {
     expect(conf).not.toContain('\\"');
   });
 });
+
+describe('compileNginxTopology — UI-managed HTTP Basic Auth (.htpasswd)', () => {
+  it('emits a generated .htpasswd file and points auth_basic_user_file at it when auth_basic_users are set', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'none' });
+    const server = serverNode('srv1', {
+      server_name: 'secure.example.com',
+      listen: 80,
+      ssl: false,
+      auth_basic_users: [{ id: 'u1', username: 'alice', hash: '{SHA}abc=' }],
+    });
+    const out = compileNginxTopology(
+      makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    );
+    const conf = out[SITE_PATH];
+
+    // Having users alone enables basic auth (no explicit auth_mode/auth_basic_enabled needed)
+    // and the user_file points at the generated path keyed by the server's node id.
+    expect(conf).toContain('auth_basic "Restricted Area";');
+    expect(conf).toContain('auth_basic_user_file /etc/nginx/htpasswd/srv1.htpasswd;');
+    // The generated .htpasswd file is emitted with one `username:hash` line + trailing newline.
+    expect(out['/etc/nginx/htpasswd/srv1.htpasswd']).toBe('alice:{SHA}abc=\n');
+  });
+
+  it('still emits a manual auth_basic_user_file when there are no auth_basic_users (no regression)', () => {
+    const server = serverNode('srv1', {
+      server_name: 'legacy.example.com',
+      auth_mode: 'basic',
+      auth_basic_user_file: '/etc/nginx/custom.htpasswd',
+    });
+    const out = compileNginxTopology(makeState({ nodes: [server], edges: [] }));
+    const conf = out[SITE_PATH];
+
+    // The manually-specified path is honored verbatim and no generated file is produced.
+    expect(conf).toContain('auth_basic_user_file /etc/nginx/custom.htpasswd;');
+    expect(out['/etc/nginx/htpasswd/srv1.htpasswd']).toBeUndefined();
+  });
+});

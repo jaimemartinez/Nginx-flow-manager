@@ -153,6 +153,7 @@ export type LocationNodeData = {
   auth_basic_enabled?: boolean;
   auth_basic?: string; // Realm name, e.g. 'Restricted Area'
   auth_basic_user_file?: string; // e.g. '/etc/nginx/.htpasswd'
+  auth_basic_users?: NginxBasicAuthUser[]; // UI-managed htpasswd entries (username + apr1 hash); the compiler emits the .htpasswd file so no CLI is needed
   auth_request_uri?: string; // e.g. '/auth'
   auth_request_headers_forward?: { name: string; variable: string }[];
   rewrites?: NginxRewriteRule[];

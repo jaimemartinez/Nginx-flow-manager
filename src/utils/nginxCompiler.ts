@@ -54,6 +54,15 @@ function isValidHeaderName(name: string): boolean {
   return /^[A-Za-z0-9-]+$/.test(name);
 }
 
+// UI-managed HTTP Basic Auth (no `htpasswd` CLI). The generated .htpasswd file is keyed by
+// the node's globally-unique id; sanitize strips anything outside [A-Za-z0-9._-] so the path
+// is filesystem-safe and can't break out of /etc/nginx/htpasswd/.
+function htpasswdPath(nodeId: string): string { return `/etc/nginx/htpasswd/${String(nodeId).replace(/[^A-Za-z0-9._-]/g,'')}.htpasswd`; }
+// Render the .htpasswd body: one `username:hash` line per user. The hash is precomputed
+// client-side ({SHA}) so no plaintext is ever stored; strip ':' and newlines from the username
+// (the field separator / line terminator) and newlines from the hash to keep each line intact.
+function htpasswdContent(users: {username:string;hash:string}[]): string { return users.filter(u=>u&&u.username&&u.hash).map(u=>`${String(u.username).replace(/[:\r\n]/g,'')}:${String(u.hash).replace(/[\r\n]/g,'')}`).join('\n') + '\n'; }
+
 /**
  * Pure TypeScript Nginx Configuration Compiler
  * 
@@ -338,13 +347,16 @@ export function compileNginxTopology(state: NginxTopologyState): CompiledNginxOu
         }
 
         // Authentication Settings
-        const authMode = sData.auth_mode || (sData.auth_basic_enabled ? 'basic' : 'none');
+        const sHasAuthUsers = Array.isArray(sData.auth_basic_users) && sData.auth_basic_users.length > 0;
+        const authMode = sData.auth_mode || ((sData.auth_basic_enabled || sHasAuthUsers) ? 'basic' : 'none');
         if (authMode === 'basic') {
           siteConfigString += `\n    # Basic Authentication\n`;
           // SEC M1: escape the realm emitted inside double quotes (the lone M4 omission). A '"'
           // would otherwise terminate the token and inject sibling directives; normal realms unchanged.
           siteConfigString += `    auth_basic "${escapeNginxQuoted(sData.auth_basic || 'Restricted Area')}";\n`;
-          siteConfigString += `    auth_basic_user_file ${sData.auth_basic_user_file || '/etc/nginx/.htpasswd'};\n\n`;
+          // UI-managed users win: point at the auto-generated .htpasswd (emitted below); otherwise
+          // honor a manually-specified path. Preserves behavior for nodes without auth_basic_users.
+          siteConfigString += `    auth_basic_user_file ${sHasAuthUsers ? htpasswdPath(server.id) : (sData.auth_basic_user_file || '/etc/nginx/.htpasswd')};\n\n`;
         } else if (authMode === 'auth_request') {
           siteConfigString += `\n    # External Auth Subrequest\n`;
           siteConfigString += `    auth_request ${sData.auth_request_uri || '/auth'};\n`;
@@ -441,6 +453,18 @@ export function compileNginxTopology(state: NginxTopologyState): CompiledNginxOu
   if (state.extra_files) {
     for (const [filePath, content] of Object.entries(state.extra_files)) {
       if (typeof content === 'string') outputFiles[filePath] = content;
+    }
+  }
+
+  // UI-managed HTTP Basic Auth: emit a generated .htpasswd file per server/location node that has
+  // auth_basic_users. Keyed by node id (globally unique) so the auth_basic_user_file paths emitted
+  // above resolve. Nodes without auth_basic_users produce no file (no behavior change).
+  for (const site of state.sites) {
+    for (const node of site.nodes) {
+      const users = (node.data as any)?.auth_basic_users;
+      if ((node.type === 'server' || node.type === 'location') && Array.isArray(users) && users.length > 0) {
+        outputFiles[htpasswdPath(node.id)] = htpasswdContent(users);
+      }
     }
   }
 
@@ -661,13 +685,16 @@ function compileLocationRecursive(
   }
 
   // Authentication Settings
-  const lAuthMode = lData.auth_mode || (lData.auth_basic_enabled ? 'basic' : 'none');
+  const lHasAuthUsers = Array.isArray(lData.auth_basic_users) && lData.auth_basic_users.length > 0;
+  const lAuthMode = lData.auth_mode || ((lData.auth_basic_enabled || lHasAuthUsers) ? 'basic' : 'none');
   if (lAuthMode === 'basic') {
     output += `\n${innerIndent}# Basic Authentication\n`;
     // SEC M1: escape the realm emitted inside double quotes (the lone M4 omission). A '"'
     // would otherwise terminate the token and inject sibling directives; normal realms unchanged.
     output += `${innerIndent}auth_basic "${escapeNginxQuoted(lData.auth_basic || 'Restricted Area')}";\n`;
-    output += `${innerIndent}auth_basic_user_file ${lData.auth_basic_user_file || '/etc/nginx/.htpasswd'};\n`;
+    // UI-managed users win: point at the auto-generated .htpasswd (emitted in compileNginxTopology);
+    // otherwise honor a manual path. Preserves behavior for nodes without auth_basic_users.
+    output += `${innerIndent}auth_basic_user_file ${lHasAuthUsers ? htpasswdPath(locNode.id) : (lData.auth_basic_user_file || '/etc/nginx/.htpasswd')};\n`;
   } else if (lAuthMode === 'auth_request') {
     output += `\n${innerIndent}# External Auth Subrequest\n`;
     output += `${innerIndent}auth_request ${lData.auth_request_uri || '/auth'};\n`;
