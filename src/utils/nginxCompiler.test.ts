@@ -323,3 +323,102 @@ describe('compileNginxTopology — UI-managed HTTP Basic Auth (.htpasswd)', () =
     expect(out['/etc/nginx/htpasswd/srv1.htpasswd']).toBeUndefined();
   });
 });
+
+describe('compileNginxTopology — auto-strip Authorization for proxied Basic-Auth locations', () => {
+  // raw_config sidecar builder (edges point child -> parent: source = raw, target = location).
+  function rawNode(id: string, content: string): Node<{ label: string; kind: string; content: string }, 'raw_config'> {
+    return { id, type: 'raw_config', position: { x: 0, y: 0 }, data: { label: 'raw', kind: 'directives', content } };
+  }
+
+  // The user's real case: Basic auth on the SERVER, proxy_pass on a child LOCATION wired to an
+  // upstream. The server's auth_basic cascades to the child, so the child must strip Authorization.
+  it('strips Authorization when the parent server has Basic auth and the location proxies an upstream', () => {
+    const upstream = upstreamNode('u1', {
+      name: 'opnsense',
+      servers: [{ id: 's1', address: '10.10.0.2', port: 443, weight: 1 }],
+    });
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass' });
+    const server = serverNode('srv1', { server_name: 'opnsense.example.org', auth_mode: 'basic', auth_basic: 'Restricted Area' });
+    const edges: Edge[] = [
+      { id: 'e1', source: 'srv1', target: 'l1' }, // server -> location
+      { id: 'e2', source: 'l1', target: 'u1' },   // location -> upstream
+    ];
+    const conf = compileNginxTopology(makeState({ nodes: [server, loc, upstream], edges }))[SITE_PATH];
+
+    expect(conf).toContain('proxy_pass http://opnsense;');
+    expect(conf).toContain('auth_basic "Restricted Area";');
+    expect(conf).toContain('proxy_set_header Authorization "";');
+  });
+
+  it('strips Authorization for a direct proxy_pass location behind server Basic auth (htpasswd users)', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'https://10.10.0.2' });
+    const server = serverNode('srv1', {
+      server_name: 'opnsense.example.org',
+      auth_basic_users: [{ id: 'u1', username: 'jaime', hash: '{SHA}abc=' }],
+    });
+    const conf = compileNginxTopology(
+      makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    )[SITE_PATH];
+
+    expect(conf).toContain('proxy_pass https://10.10.0.2;');
+    expect(conf).toContain('proxy_set_header Authorization "";');
+  });
+
+  it('strips Authorization when Basic auth lives on the LOCATION itself', () => {
+    const loc = locationNode('l1', {
+      path: '/', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:8080', auth_mode: 'basic', auth_basic: 'Area',
+    });
+    const server = serverNode('srv1', { server_name: 'app.example.com' });
+    const conf = compileNginxTopology(
+      makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    )[SITE_PATH];
+
+    expect(conf).toContain('proxy_set_header Authorization "";');
+  });
+
+  it('does NOT strip Authorization when the location proxies but has no Basic auth', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:8080' });
+    const server = serverNode('srv1', { server_name: 'app.example.com' });
+    const conf = compileNginxTopology(
+      makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    )[SITE_PATH];
+
+    expect(conf).toContain('proxy_pass http://127.0.0.1:8080;');
+    expect(conf).not.toContain('proxy_set_header Authorization');
+  });
+
+  it('does NOT strip Authorization when Basic auth is present but the location is not proxied', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'root', root: '/var/www' });
+    const server = serverNode('srv1', {
+      server_name: 'app.example.com',
+      auth_basic_users: [{ id: 'u1', username: 'alice', hash: '{SHA}abc=' }],
+    });
+    const conf = compileNginxTopology(
+      makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    )[SITE_PATH];
+
+    expect(conf).toContain('auth_basic_user_file');
+    expect(conf).not.toContain('proxy_set_header Authorization');
+  });
+
+  it('does NOT duplicate Authorization when the imported config already set it (round-trip safe)', () => {
+    // An imported proxied + basic-auth location keeps its original `proxy_set_header Authorization`
+    // in a raw_config sidecar. The header-specific guard must preserve it and not add a second one.
+    const raw = rawNode('r1', 'proxy_set_header Authorization "Bearer keep-me";');
+    const loc = locationNode('l1', {
+      path: '/', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:8080', auth_mode: 'basic',
+    });
+    const server = serverNode('srv1', { server_name: 'app.example.com' });
+    const edges: Edge[] = [
+      { id: 'e1', source: 'srv1', target: 'l1' },
+      { id: 'e2', source: 'r1', target: 'l1' }, // raw_config sidecar -> location
+    ];
+    const conf = compileNginxTopology(makeState({ nodes: [server, loc, raw], edges }))[SITE_PATH];
+
+    // Exactly one Authorization directive, and it's the user's value (not the auto-cleared "").
+    const authLines = conf.split('\n').filter((l) => /proxy_set_header\s+Authorization/i.test(l));
+    expect(authLines.length).toBe(1);
+    expect(conf).toContain('proxy_set_header Authorization "Bearer keep-me";');
+    expect(conf).not.toContain('proxy_set_header Authorization "";');
+  });
+});

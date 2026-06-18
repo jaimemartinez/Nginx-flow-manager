@@ -23,13 +23,26 @@ import {
 } from './nginxParser';
 
 // ── server-only AST serialization (verbatim from server.ts) ─────────────────
+// The tokenizer strips the surrounding quotes from a quoted argument, so when we re-serialize a
+// directive we must put them back for any value that would otherwise re-tokenize differently —
+// an EMPTY value (`""`, e.g. `proxy_set_header Authorization "";`, which would collapse to an
+// invalid arg-less directive) or one containing whitespace / nginx metacharacters. Plain tokens
+// (paths, $variables, regexes without spaces) are emitted bare so the common case is unchanged.
+function quoteArgIfNeeded(arg: string): string {
+  if (arg === '') return '""';
+  if (/[\s;{}#"']/.test(arg)) {
+    return `"${arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }
+  return arg;
+}
+
 // reconstructASTNode re-serializes an AST node when no verbatim source span is available
 // (it lives here because it is import-side serialization, not part of the pure tokenizer).
 function reconstructASTNode(node: NginxASTNode, indent = ''): string {
   if (node.type === 'directive') {
-    return `${indent}${node.name} ${node.args.join(' ')};`;
+    return `${indent}${node.name} ${node.args.map(quoteArgIfNeeded).join(' ')};`;
   }
-  const header = [node.name, ...node.args].join(' ');
+  const header = [node.name, ...node.args.map(quoteArgIfNeeded)].join(' ');
   const body = node.children.map(c => reconstructASTNode(c, indent + '    ')).join('\n');
   return `${indent}${header} {\n${body}\n${indent}}`;
 }

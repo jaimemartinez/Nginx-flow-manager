@@ -363,3 +363,51 @@ describe('round-trip fidelity corpus — no fabrication of unimplied directives'
     expect(out).not.toContain('proxy_pass');
   });
 });
+
+// ── Auto-strip Authorization: behavior + round-trip safety ───────────────────
+// Real-world case (OPNsense behind nginx): server-level Basic auth + a proxy_pass location. nginx
+// validates the Basic credentials, so they must NOT be forwarded to the backend (the backend would
+// reject nginx's Basic header with its own 401, re-triggering the browser prompt on every page).
+// The source has NO `proxy_set_header Authorization` — the compiler adds the clearing line. This
+// must stay exact across a re-import (idempotent): the added line lands in a raw_config sidecar and
+// the header-specific guard must not emit a second one.
+const FIX_AUTH_PROXY = `server {
+    listen 443 ssl;
+    server_name opnsense.example.org;
+    ssl_certificate /etc/letsencrypt/live/opnsense.example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/opnsense.example.org/privkey.pem;
+
+    auth_basic "Restricted Area";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location / {
+        proxy_pass https://10.10.0.2;
+        proxy_ssl_verify off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+`;
+
+describe('round-trip fidelity corpus — auto-strip Authorization for proxied Basic-Auth', () => {
+  const countAuthLines = (conf: string) =>
+    conf.split('\n').filter((l) => /proxy_set_header\s+Authorization/i.test(stripComment(l))).length;
+
+  it('preserves every source directive and adds exactly one Authorization-clearing header', () => {
+    const out = roundTrip('opnsense.example.org.conf', FIX_AUTH_PROXY);
+    // No source directive dropped (auth_basic, auth_basic_user_file, proxy_pass, the headers, ssl…).
+    assertNoDropped(FIX_AUTH_PROXY, out, 'auth-proxy');
+    // The clearing header is injected, exactly once.
+    expect(out).toContain('proxy_set_header Authorization "";');
+    expect(countAuthLines(out)).toBe(1);
+  });
+
+  it('is idempotent across a re-import (no duplicate Authorization on the second pass)', () => {
+    const out1 = roundTrip('opnsense.example.org.conf', FIX_AUTH_PROXY);
+    // Re-import the compiled output and recompile. The injected line is now an unmodeled directive
+    // (raw_config sidecar); the guard must recognize it and not add a second clearing header.
+    const out2 = roundTrip('opnsense.example.org.conf', out1);
+    expect(countAuthLines(out2)).toBe(1);
+    expect(out2).toContain('proxy_set_header Authorization "";');
+  });
+});

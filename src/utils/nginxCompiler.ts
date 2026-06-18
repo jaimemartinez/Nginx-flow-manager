@@ -413,7 +413,7 @@ export function compileNginxTopology(state: NginxTopologyState): CompiledNginxOu
 
         if (immediateChildren.length > 0) {
           for (const topLoc of immediateChildren) {
-            siteConfigString += compileLocationRecursive(topLoc, locationNodes, getImmediateParents, locationToUpstreamMap, upstreamNodes, 1, nodes, incomingEdgesMap);
+            siteConfigString += compileLocationRecursive(topLoc, locationNodes, getImmediateParents, locationToUpstreamMap, upstreamNodes, 1, nodes, incomingEdgesMap, authMode === 'basic');
           }
         } else if (!hasServerCustom && !hasRawChildren) {
           // Inject a default route only for pristine (UI-created) servers. An imported
@@ -483,7 +483,11 @@ function compileLocationRecursive(
   allUpstreams: Node<UpstreamNodeData, 'upstream'>[],
   indentationLevel: number,
   allNodes?: any[],
-  incomingEdgesMap?: Map<string, string[]>
+  incomingEdgesMap?: Map<string, string[]>,
+  // True when an ancestor (the parent server, or an enclosing location) has HTTP Basic Auth
+  // active. nginx cascades auth_basic to child locations, so a proxied child must also strip the
+  // client's Authorization header even when the auth_basic directive itself lives on the server.
+  inheritedBasicAuth: boolean = false
 ): string {
   const lData: LocationNodeData = locNode.data;
   const indent = '    '.repeat(indentationLevel);
@@ -503,6 +507,13 @@ function compileLocationRecursive(
   const locCustomText = `${(lData.custom_directives as string) || ''}\n${rawChildText}`;
   const locCustomHas = (re: RegExp) => re.test(locCustomText);
   const hasLocCustom = locCustomText.trim() !== '';
+
+  // Effective HTTP Basic Auth state for this location — its own auth, or auth inherited from an
+  // ancestor (nginx cascades auth_basic down to child locations). Hoisted here so the proxy block
+  // below can decide whether to strip the client's Authorization header before proxying upstream.
+  const lHasAuthUsers = Array.isArray(lData.auth_basic_users) && lData.auth_basic_users.length > 0;
+  const lAuthMode = lData.auth_mode || ((lData.auth_basic_enabled || lHasAuthUsers) ? 'basic' : 'none');
+  const basicAuthActive = inheritedBasicAuth || lAuthMode === 'basic';
 
   let output = `\n${indent}# Route location node [id: ${locNode.id}]\n`;
   const modifierStr = lData.modifier ? `${lData.modifier} ` : '';
@@ -566,6 +577,18 @@ function compileLocationRecursive(
     output += `${innerIndent}proxy_http_version 1.1;\n`;
     output += `${innerIndent}proxy_set_header Upgrade \$http_upgrade;\n`;
     output += `${innerIndent}proxy_set_header Connection "upgrade";\n`;
+  }
+
+  // Strip the client's Authorization header before proxying — but ONLY when this location both
+  // proxies AND sits behind HTTP Basic Auth (its own or inherited from the server). nginx has
+  // already validated the Basic credentials by this point, so the backend never needs them; in
+  // fact forwarding them breaks apps that do their own auth off the Authorization header (e.g.
+  // OPNsense, whose UI/API rejects nginx's Basic header with its own 401, which makes the browser
+  // re-prompt for the password on every page). The guard is header-specific so an imported or
+  // user-supplied `proxy_set_header Authorization ...;` is preserved verbatim and never duplicated
+  // (keeps the import → compile round-trip exact and idempotent).
+  if (isProxied && basicAuthActive && !locCustomHas(/proxy_set_header\s+Authorization/i)) {
+    output += `${innerIndent}proxy_set_header Authorization "";\n`;
   }
 
   // try_files (e.g. SPA fallback) — ONLY for static-serving locations. It must NOT be emitted
@@ -684,9 +707,7 @@ function compileLocationRecursive(
     }
   }
 
-  // Authentication Settings
-  const lHasAuthUsers = Array.isArray(lData.auth_basic_users) && lData.auth_basic_users.length > 0;
-  const lAuthMode = lData.auth_mode || ((lData.auth_basic_enabled || lHasAuthUsers) ? 'basic' : 'none');
+  // Authentication Settings (lAuthMode / lHasAuthUsers are hoisted to the top of this function)
   if (lAuthMode === 'basic') {
     output += `\n${innerIndent}# Basic Authentication\n`;
     // SEC M1: escape the realm emitted inside double quotes (the lone M4 omission). A '"'
@@ -730,7 +751,7 @@ function compileLocationRecursive(
   });
 
   for (const nLoc of nestedLocations) {
-    output += compileLocationRecursive(nLoc, allLocations, getImmediateParents, locationToUpstreamMap, allUpstreams, indentationLevel + 1, finalNodes, incomingEdgesMap);
+    output += compileLocationRecursive(nLoc, allLocations, getImmediateParents, locationToUpstreamMap, allUpstreams, indentationLevel + 1, finalNodes, incomingEdgesMap, basicAuthActive);
   }
 
   output += `${indent}}\n`;
