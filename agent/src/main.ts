@@ -58,6 +58,7 @@ function registerHandlers(server: RpcServer, ops: Ops) {
     .on('certs.list', () => ops.certsList())
     .on('certs.issue', (p) => ops.certsIssue(p))
     .on('certs.renew', (p) => ops.certsRenew(p))
+    .on('certs.delete', (p) => ops.certsDelete(p))
     .on('drift.snapshot', () => ops.driftSnapshot());
 }
 
