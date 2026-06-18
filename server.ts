@@ -2317,7 +2317,24 @@ http {
         addDeployLog("certbot-issue", `certs.issue (${domains.join(", ")})${staging ? " [staging]" : ""}: ${r.ok ? "OK" : "falló"} [agente]`, r.ok ? "success" : "error");
         return res.json({ success: r.ok, stdout: r.stdout, stderr: r.stderr, command: r.command });
       }
-      const { stdout, stderr, code } = await runManagedShell(`${cmd} 2>&1`);
+      let { stdout, stderr, code } = await runManagedShell(`${cmd} 2>&1`);
+      // The certbot nginx plugin (python3-certbot-nginx) is frequently not installed. When the
+      // --nginx method fails for exactly that reason, install the plugin on the server and retry
+      // once — so the user doesn't have to drop to a shell. The package name is a constant (no
+      // injection surface). Runs as the configured SSH user (root in the typical setup).
+      if (method === "nginx" && code !== 0 &&
+          /nginx plugin does not appear to be installed|could not find a usable 'nginx'|the requested nginx plugin/i.test(`${stdout}\n${stderr}`)) {
+        addDeployLog("apt-get install -y python3-certbot-nginx",
+          "El plugin certbot-nginx no está instalado — instalándolo automáticamente en el servidor...", "info");
+        const inst = await runManagedShell(`DEBIAN_FRONTEND=noninteractive apt-get update >/dev/null 2>&1; DEBIAN_FRONTEND=noninteractive apt-get install -y python3-certbot-nginx 2>&1`);
+        addDeployLog("apt-get install -y python3-certbot-nginx", (inst.stdout || inst.stderr || "").slice(-2000), inst.code === 0 ? "success" : "error");
+        if (inst.code === 0) {
+          ({ stdout, stderr, code } = await runManagedShell(`${cmd} 2>&1`));
+          stdout = `[Nginx Flow Manager] python3-certbot-nginx instalado automáticamente; reintentando emisión.\n\n${stdout}`;
+        } else {
+          stderr = `${stderr}\n\n[Nginx Flow Manager] No se pudo instalar python3-certbot-nginx automáticamente. ¿El usuario SSH tiene permisos root/sudo? Alternativa: usa el método "webroot" en lugar de "nginx".\n${inst.stderr || inst.stdout}`;
+        }
+      }
       addDeployLog("certbot-issue", `certbot certonly (${domains.join(", ")})${staging ? " [staging]" : ""}: ${code === 0 ? "OK" : "falló"}`, code === 0 ? "success" : "error");
       res.json({ success: code === 0, stdout, stderr, command: displayCmd });
     } catch (err: any) {
