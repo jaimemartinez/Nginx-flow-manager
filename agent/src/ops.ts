@@ -361,7 +361,7 @@ export class Ops {
     return { installed: true, certificates: parseCertbot(r.stdout), raw: r.stdout.trim() };
   }
 
-  async certsIssue(p: { domains: string[]; email?: string; method?: 'webroot' | 'nginx'; webroot?: string; staging?: boolean }) {
+  async certsIssue(p: { domains: string[]; email?: string; method?: 'webroot' | 'nginx'; webroot?: string; staging?: boolean; forceRenewal?: boolean }) {
     const domains = validateDomains(p.domains);
     const email = validateEmail(p.email);
     const args = ['certonly', '--non-interactive', '--agree-tos'];
@@ -369,6 +369,7 @@ export class Ops {
     if (p.method === 'nginx') args.push('--nginx');
     else { args.push('--webroot', '-w', validateWebroot(p.webroot)); }
     if (p.staging) args.push('--staging');
+    if (p.forceRenewal) args.push('--force-renewal');
     for (const d of domains) args.push('-d', d);
     let r = await run(this.cfg.certbotBin, args);
     // The certbot nginx plugin (python3-certbot-nginx) is often not installed. The agent runs as
