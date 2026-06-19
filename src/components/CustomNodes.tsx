@@ -474,6 +474,7 @@ async function shaHtpasswd(password: string): Promise<string> { const buf = awai
 interface CustomAuthEditorProps {
   auth_mode?: 'none' | 'basic' | 'auth_request';
   auth_basic_enabled?: boolean;
+  auth_basic_off?: boolean;
   auth_basic?: string;
   auth_basic_user_file?: string;
   auth_basic_users?: NginxBasicAuthUser[];
@@ -485,6 +486,7 @@ interface CustomAuthEditorProps {
 const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
   auth_mode = 'none',
   auth_basic_enabled = false,
+  auth_basic_off = false,
   auth_basic = '',
   auth_basic_user_file = '',
   auth_basic_users = [],
@@ -506,6 +508,8 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
     } else {
       onChange('auth_basic_enabled', false);
     }
+    // basic / subrequest enable auth here, so they can't also be "auth_basic off".
+    if (mode !== 'none') onChange('auth_basic_off', false);
   };
 
   const addForwardHeader = (e: React.MouseEvent) => {
@@ -564,6 +568,21 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
               </button>
             ))}
           </div>
+
+          {activeMode === 'none' && (
+            <label className="nodrag flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={auth_basic_off}
+                onChange={(e) => onChange('auth_basic_off', e.target.checked)}
+                className="nodrag mt-0.5 accent-[#009639] cursor-pointer"
+              />
+              <span className="text-[10px] text-slate-300 leading-tight">
+                Desactivar auth heredada (<code className="text-slate-400">auth_basic off;</code>)
+                <span className="block text-[9px] text-slate-500">Para una location pública bajo un server con Basic Auth.</span>
+              </span>
+            </label>
+          )}
 
           {activeMode === 'basic' && (
             <div className="bg-[#0A0A0B] border border-white/10 p-2 rounded flex flex-col gap-2 shadow-inner">
@@ -1569,6 +1588,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
         {/* Basic & Subrequest Authentication */}
         <CustomAuthEditor
           auth_mode={data.auth_mode}
+          auth_basic_off={data.auth_basic_off}
           auth_basic_enabled={data.auth_basic_enabled}
           auth_basic={data.auth_basic || ''}
           auth_basic_user_file={data.auth_basic_user_file || ''}
@@ -1904,6 +1924,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
         {/* Basic & Subrequest Authentication */}
         <CustomAuthEditor
           auth_mode={data.auth_mode}
+          auth_basic_off={data.auth_basic_off}
           auth_basic_enabled={data.auth_basic_enabled}
           auth_basic={data.auth_basic || ''}
           auth_basic_user_file={data.auth_basic_user_file || ''}

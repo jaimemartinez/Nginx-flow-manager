@@ -348,8 +348,11 @@ export function compileNginxTopology(state: NginxTopologyState): CompiledNginxOu
 
         // Authentication Settings
         const sHasAuthUsers = Array.isArray(sData.auth_basic_users) && sData.auth_basic_users.length > 0;
-        const authMode = sData.auth_mode || ((sData.auth_basic_enabled || sHasAuthUsers) ? 'basic' : 'none');
-        if (authMode === 'basic') {
+        const authMode = sData.auth_basic_off ? 'none' : (sData.auth_mode || ((sData.auth_basic_enabled || sHasAuthUsers) ? 'basic' : 'none'));
+        if (sData.auth_basic_off) {
+          siteConfigString += `\n    # Basic Authentication disabled (auth_basic off)\n`;
+          siteConfigString += `    auth_basic off;\n\n`;
+        } else if (authMode === 'basic') {
           siteConfigString += `\n    # Basic Authentication\n`;
           // SEC M1: escape the realm emitted inside double quotes (the lone M4 omission). A '"'
           // would otherwise terminate the token and inject sibling directives; normal realms unchanged.
@@ -513,7 +516,9 @@ function compileLocationRecursive(
   // below can decide whether to strip the client's Authorization header before proxying upstream.
   const lHasAuthUsers = Array.isArray(lData.auth_basic_users) && lData.auth_basic_users.length > 0;
   const lAuthMode = lData.auth_mode || ((lData.auth_basic_enabled || lHasAuthUsers) ? 'basic' : 'none');
-  const basicAuthActive = inheritedBasicAuth || lAuthMode === 'basic';
+  // `auth_basic off;` on this location disables auth here (and for its children), overriding any
+  // inherited from the parent server — so there are no Basic credentials to strip downstream.
+  const basicAuthActive = !lData.auth_basic_off && (inheritedBasicAuth || lAuthMode === 'basic');
 
   let output = `\n${indent}# Route location node [id: ${locNode.id}]\n`;
   const modifierStr = lData.modifier ? `${lData.modifier} ` : '';
@@ -708,7 +713,10 @@ function compileLocationRecursive(
   }
 
   // Authentication Settings (lAuthMode / lHasAuthUsers are hoisted to the top of this function)
-  if (lAuthMode === 'basic') {
+  if (lData.auth_basic_off) {
+    output += `\n${innerIndent}# Basic Authentication disabled (auth_basic off)\n`;
+    output += `${innerIndent}auth_basic off;\n`;
+  } else if (lAuthMode === 'basic') {
     output += `\n${innerIndent}# Basic Authentication\n`;
     // SEC M1: escape the realm emitted inside double quotes (the lone M4 omission). A '"'
     // would otherwise terminate the token and inject sibling directives; normal realms unchanged.
