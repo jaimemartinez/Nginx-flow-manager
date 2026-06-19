@@ -70,6 +70,15 @@ npm run build   # vite build + esbuild-bundles server.ts → dist/server.cjs
 npm run start   # node dist/server.cjs  (set NODE_ENV=production)
 ```
 
+### Docker
+
+```bash
+docker compose up -d --build
+# open https://localhost:3000  → accept the self-signed cert → run the setup wizard
+```
+
+The image contains **no state or secrets** — all writable data (`workspace-state.json`, `app-config.json`, `agent-config.json`, the master key, `certs/`, `logs/`) lives in the `nfm-data` named volume, so a fresh container starts clean at the setup wizard and your config survives rebuilds. The container manages a **remote** nginx host over SSH (or the nfm-agent), so it does not bundle nginx itself. Override the port with `-e NFM_PORT=…` (and the matching `ports:` mapping).
+
 ### Environment overrides
 
 | Variable | Effect | Default |
