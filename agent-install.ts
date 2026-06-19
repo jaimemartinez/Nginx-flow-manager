@@ -28,6 +28,10 @@ export function authorizedKeysLine(publicKey: string): string {
 export function sudoersFile(): string {
   return [
     '# Managed by Nginx Flow Manager — do not edit by hand.',
+    // The agent is launched over a no-PTY SSH exec channel; on RHEL-family hosts a global
+    // `Defaults requiretty` would make `sudo -n` fail there, so the forced command silently exits
+    // and the panel only sees a handshake timeout. Disable requiretty for this user specifically.
+    `Defaults:${AGENT_USER} !requiretty`,
     `${AGENT_USER} ALL=(root) NOPASSWD: ${AGENT_BIN} serve --stdio`,
     '',
   ].join('\n');
