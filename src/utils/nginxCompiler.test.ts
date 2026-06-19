@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { compileNginxTopology } from './nginxCompiler';
+import { compileNginxTopology, orphanHtpasswdFiles, HTPASSWD_DIR } from './nginxCompiler';
 import type {
   NginxTopologyState,
   NginxSiteConfig,
@@ -437,5 +437,31 @@ describe('compileNginxTopology — auth_basic off (disable inherited auth)', () 
     expect(conf).not.toContain('auth_basic "off"');
     // Auth is disabled here, so there are no Basic credentials to strip from the upstream.
     expect(conf).not.toContain('proxy_set_header Authorization "";');
+  });
+});
+
+describe('orphanHtpasswdFiles — deploy cleanup helper', () => {
+  const p = (name: string) => `${HTPASSWD_DIR}/${name}`;
+
+  it('flags generated files no longer in the current output', () => {
+    const current = [p('srv1.htpasswd'), '/etc/nginx/sites-available/a.conf'];
+    const existing = ['srv1.htpasswd', 'loc-old.htpasswd', 'srv-deleted.htpasswd'];
+    expect(orphanHtpasswdFiles(current, existing).sort()).toEqual(['loc-old.htpasswd', 'srv-deleted.htpasswd']);
+  });
+
+  it('keeps every file still present in the output (no false positives)', () => {
+    const current = [p('a.htpasswd'), p('b.htpasswd')];
+    expect(orphanHtpasswdFiles(current, ['a.htpasswd', 'b.htpasswd'])).toEqual([]);
+  });
+
+  it('ignores non-.htpasswd entries and odd names (never deletes unrelated files)', () => {
+    const existing = ['README', 'notes.txt', '.keep', 'weird name.htpasswd', 'good.htpasswd'];
+    // Only the well-formed `good.htpasswd` (absent from output) is an orphan; the space-containing
+    // name and the non-.htpasswd files are left alone.
+    expect(orphanHtpasswdFiles([], existing)).toEqual(['good.htpasswd']);
+  });
+
+  it('treats an empty output as: every managed .htpasswd is orphaned', () => {
+    expect(orphanHtpasswdFiles([], ['x.htpasswd', 'y.htpasswd'])).toEqual(['x.htpasswd', 'y.htpasswd']);
   });
 });
