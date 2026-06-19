@@ -29,7 +29,9 @@ export class AgentRpc {
   private listeners = new Map<string, Set<(data: any) => void>>();
   private buf = '';
 
-  constructor(private input: Readable, private output: Writable, private secret: string) {
+  // `diag` optionally returns a captured stderr tail from the transport (the agent sends sudo
+  // errors / crashes / audit lines there) so a timeout can report the REAL cause, not just silence.
+  constructor(private input: Readable, private output: Writable, private secret: string, private diag?: () => string) {
     this.input.setEncoding('utf8');
     this.input.on('data', (c: string) => this.onData(c));
   }
@@ -66,7 +68,13 @@ export class AgentRpc {
     const id = this.nextId++;
     const req = this.sign(id, method, params);
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { this.pending.delete(id); reject(new Error(`agent timeout: ${method}`)); }, timeoutMs);
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        const tail = this.diag?.().trim();
+        // Turn the opaque "installed but not responding" handshake timeout into the actual host-side
+        // failure (e.g. `sudo: a password is required`, `node: command not found`, a crash).
+        reject(new Error(`agent timeout: ${method}${tail ? ` — agent stderr: ${tail}` : ''}`));
+      }, timeoutMs);
       this.pending.set(id, {
         resolve: (msg) => (msg.ok ? resolve(msg.result) : reject(new Error(msg.error || 'agent error'))),
         reject, timer,
@@ -105,9 +113,17 @@ export class AgentClient {
         // The key's forced command runs the agent regardless of the command string we pass.
         conn.exec('nfm-agent', (err, stream) => {
           if (err) { conn.end(); return reject(err); }
-          const rpc = new AgentRpc(stream as unknown as Readable, stream as unknown as Writable, this.cfg.secret);
-          (stream as any).stderr?.on('data', () => { /* agent audit/stderr; ignored on the app side */ });
-          stream.on('close', () => { this.rpc = undefined; this.conn = undefined; rpc.fail(new Error('agent channel closed')); });
+          // The agent keeps stdout pure for protocol frames and sends ALL diagnostics (sudo denial,
+          // missing/old node, a crash, audit lines) to stderr. Capture a bounded tail so a handshake
+          // timeout / channel error can surface the real cause instead of an opaque silence.
+          let stderrTail = '';
+          const rpc = new AgentRpc(stream as unknown as Readable, stream as unknown as Writable, this.cfg.secret, () => stderrTail);
+          (stream as any).stderr?.on('data', (d: Buffer) => { stderrTail = (stderrTail + d.toString('utf8')).slice(-2048); });
+          stream.on('error', (e: Error) => {
+            const tail = stderrTail.trim();
+            rpc.fail(new Error(`agent channel error: ${e.message}${tail ? ` — agent stderr: ${tail}` : ''}`));
+          });
+          stream.on('close', () => { this.rpc = undefined; this.conn = undefined; rpc.fail(new Error(`agent channel closed${stderrTail.trim() ? ` — agent stderr: ${stderrTail.trim()}` : ''}`)); });
           this.conn = conn; this.rpc = rpc; this.connecting = undefined;
           resolve(rpc);
         });
