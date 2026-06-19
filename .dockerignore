@@ -1,0 +1,31 @@
+# Keep the build context lean and — critically — free of any state/secrets, so the image can
+# never bake them in. Deps and build outputs are regenerated inside the build stage.
+.git
+.github
+node_modules
+agent/node_modules
+dist
+agent/dist
+graphify-out
+.claude
+release-artifacts
+coverage
+
+# State / secrets (never copy into the image)
+*.log
+logs
+certs
+.env
+.env.*
+!.env.example
+workspace-state.json
+workspace-state.json.bak
+workspace-state.json.tmp
+app-config.json
+agent-config.json
+nfm-master.key
+*.key
+*.crt
+*.pem
+*.p12
+*.pfx

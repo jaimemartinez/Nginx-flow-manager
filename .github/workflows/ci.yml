@@ -26,6 +26,12 @@ jobs:
       - name: Lint (type-check)
         run: npm run lint
 
+      - name: Lint (eslint)
+        # Gates on eslint ERRORS only. The codebase currently carries ~423 pre-existing warnings
+        # (tracked separately); `lint:eslint` runs with --max-warnings=9999 so warnings don't fail
+        # CI, but any newly-introduced error will. Tighten the threshold as the warning debt is paid.
+        run: npm run lint:eslint
+
       - name: Test
         run: npm test
 

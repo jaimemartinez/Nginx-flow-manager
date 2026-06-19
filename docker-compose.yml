@@ -1,0 +1,25 @@
+# Nginx Flow Manager — docker compose.
+#
+#   docker compose up -d --build
+#   open https://localhost:3000   (accept the self-signed cert, then run the setup wizard)
+#
+# All state persists in the named volume `nfm-data`. The image contains NO databases/secrets.
+services:
+  nfm:
+    build: .
+    image: nginx-flow-manager:1.0.0
+    container_name: nginx-flow-manager
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NFM_PORT: "3000"
+      # Bind inside the container; publish via the `ports` mapping above. Front with a reverse
+      # proxy / firewall if the host isn't network-isolated.
+      NFM_HOST: 0.0.0.0
+    volumes:
+      - nfm-data:/data
+
+volumes:
+  nfm-data:
