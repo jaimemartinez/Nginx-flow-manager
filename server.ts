@@ -19,6 +19,7 @@ import { tokenizeNginx, parseNginxAST, NginxASTNode, NginxDirective } from "./sr
 // FIX #3: the import-side parser (parseSingleConfig) was extracted to a pure, unit-testable module.
 // server.ts now imports it instead of carrying its own duplicate copy.
 import { parseNginxConfig } from "./src/utils/nginxImport";
+import { HTPASSWD_DIR, orphanHtpasswdFiles } from "./src/utils/nginxCompiler";
 // FIX #1: secrets-at-rest. encrypt/decrypt SSH password, SSH key, agent privateKey + secret at the
 // load/save boundary. decryptSecret() passes plaintext through, so existing configs keep working.
 import { encryptSecret, decryptSecret, isEncrypted } from "./src/utils/secretStore";
@@ -3234,6 +3235,22 @@ http {
           addDeployLog(`write:${filePath}`, `Archivo escrito en remoto: ${remotePath}`, "success");
         }
 
+        // Reconcile NFM's managed htpasswd dir: remove generated .htpasswd files that no node
+        // references anymore (deleted users/nodes leave stale credential files). Best-effort,
+        // confined to NFM's dedicated /etc/nginx/htpasswd dir, never a user's own htpasswd.
+        try {
+          const probe = confineNginxPath(`${HTPASSWD_DIR}/probe.htpasswd`);
+          const htDir = probe ? path.posix.dirname(probe) : null;
+          if (htDir) {
+            const ls = await sshExec(ssh, `ls -1 ${shQuote(htDir)} 2>/dev/null; true`);
+            const existing = (ls.stdout || "").split("\n").map(s => s.trim()).filter(Boolean);
+            for (const name of orphanHtpasswdFiles(Object.keys(files), existing)) {
+              await sshExec(ssh, `rm -f ${shQuote(`${htDir}/${name}`)}`);
+              addDeployLog("htpasswd-cleanup", `Eliminado .htpasswd huérfano: ${name}`, "success");
+            }
+          }
+        } catch (_) { /* best-effort cleanup, never fatal */ }
+
         // Reconcile symlinks remotely
         if (Array.isArray(symlinks)) {
           const enabledDir = `${NGINX_DIR}/sites-enabled`;
@@ -3365,6 +3382,19 @@ http {
           });
         }
       }
+
+      // Reconcile NFM's managed htpasswd dir locally: remove generated .htpasswd files that no node
+      // references anymore. Best-effort, confined to NFM's dedicated htpasswd dir.
+      try {
+        const probe = confineNginxPath(`${HTPASSWD_DIR}/probe.htpasswd`);
+        const htDir = probe ? path.dirname(probe) : null;
+        if (htDir && fs.existsSync(htDir)) {
+          const existing = fs.readdirSync(htDir);
+          for (const name of orphanHtpasswdFiles(Object.keys(files), existing)) {
+            try { fs.rmSync(path.join(htDir, name), { force: true }); addDeployLog("htpasswd-cleanup", `Eliminado .htpasswd huérfano: ${name}`, "success"); } catch (_) {}
+          }
+        }
+      } catch (_) { /* best-effort cleanup, never fatal */ }
 
       // 3. Reconcile symbolic links in sites-enabled / sites-available
       if (Array.isArray(symlinks)) {

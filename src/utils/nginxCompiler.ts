@@ -57,7 +57,21 @@ function isValidHeaderName(name: string): boolean {
 // UI-managed HTTP Basic Auth (no `htpasswd` CLI). The generated .htpasswd file is keyed by
 // the node's globally-unique id; sanitize strips anything outside [A-Za-z0-9._-] so the path
 // is filesystem-safe and can't break out of /etc/nginx/htpasswd/.
-function htpasswdPath(nodeId: string): string { return `/etc/nginx/htpasswd/${String(nodeId).replace(/[^A-Za-z0-9._-]/g,'')}.htpasswd`; }
+export const HTPASSWD_DIR = '/etc/nginx/htpasswd';
+function htpasswdPath(nodeId: string): string { return `${HTPASSWD_DIR}/${String(nodeId).replace(/[^A-Za-z0-9._-]/g,'')}.htpasswd`; }
+
+// Given the paths the current compile emitted and the basenames currently present in HTPASSWD_DIR
+// on the host, return the orphaned basenames to delete — generated .htpasswd files no longer backed
+// by any node (deleted users/nodes leave stale credential files behind). Confined to *.htpasswd in
+// NFM's own dedicated directory, so it never touches a user's hand-managed htpasswd elsewhere
+// (e.g. /etc/nginx/.htpasswd). Pure + deterministic so the deploy wiring can be reasoned about/tested.
+export function orphanHtpasswdFiles(currentOutputPaths: string[], existingBasenames: string[]): string[] {
+  const prefix = HTPASSWD_DIR + '/';
+  const keep = new Set(
+    currentOutputPaths.filter(p => p.startsWith(prefix) && p.endsWith('.htpasswd')).map(p => p.slice(prefix.length)),
+  );
+  return existingBasenames.filter(name => /^[A-Za-z0-9._-]+\.htpasswd$/.test(name) && !keep.has(name));
+}
 // Render the .htpasswd body: one `username:hash` line per user. The hash is precomputed
 // client-side ({SHA}) so no plaintext is ever stored; strip ':' and newlines from the username
 // (the field separator / line terminator) and newlines from the hash to keep each line intact.
