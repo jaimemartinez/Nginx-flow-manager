@@ -1,0 +1,7 @@
+# Shell scripts and the Docker entrypoint MUST keep LF line endings so they run inside Linux
+# containers even when the repo is checked out on Windows (a CRLF shebang line yields the classic
+# `/bin/sh^M: bad interpreter` failure). This overrides core.autocrlf for these paths.
+*.sh            text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile      text eol=lf
+.dockerignore   text eol=lf
