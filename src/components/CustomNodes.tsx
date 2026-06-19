@@ -10,6 +10,7 @@ import { useTopology } from '../context/TopologyContext';
 import { ServerNodeData, LocationNodeData, UpstreamNodeData, UpstreamServer, NginxHeader, NginxRewriteRule, NginxAccessRule, NginxBasicAuthUser } from '../types';
 import { Server, Route, Network, Plus, Trash2, Shield, ShieldAlert, Settings, HelpCircle, ChevronDown, ChevronUp, Lock, AlertTriangle, Maximize2, X, Eraser } from 'lucide-react';
 import { secureFetch } from '../utils/api';
+import { htpasswdApr1 } from '../utils/htpasswd';
 
 function getNodeDimensions(type: string | undefined) {
   if (type === 'server') {
@@ -467,9 +468,8 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
   );
 };
 
-// Compute the nginx-native {SHA} htpasswd hash client-side via Web Crypto. The plaintext
-// password never leaves the browser nor is stored — only this hash is persisted in the node.
-async function shaHtpasswd(password: string): Promise<string> { const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(password)); let bin = ''; new Uint8Array(buf).forEach(b => bin += String.fromCharCode(b)); return '{SHA}' + btoa(bin); }
+// htpasswd hashing now uses salted, iterated apr1 ($apr1$) via ../utils/htpasswd (htpasswdApr1).
+// The plaintext password never leaves the browser nor is stored — only the hash is persisted.
 
 interface CustomAuthEditorProps {
   auth_mode?: 'none' | 'basic' | 'auth_request';
@@ -635,7 +635,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                       onClick={async (e) => {
                         e.stopPropagation();
                         if (!newUser.trim() || !newPass) return;
-                        const hash = await shaHtpasswd(newPass);
+                        const hash = htpasswdApr1(newPass);
                         onChange('auth_basic_users', [...auth_basic_users, { id: Math.random().toString(36).slice(2), username: newUser.trim(), hash }]);
                         setNewUser('');
                         setNewPass('');
@@ -659,7 +659,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
               </div>
               <div className="text-[9px] text-slate-500 flex items-start gap-1 p-0.5 bg-white/2 rounded">
                 <Shield size={10} className="shrink-0 mt-0.5 text-slate-400" />
-                <span>Los usuarios añadidos arriba se hashean ({'{SHA}'}) y se escriben en un .htpasswd generado automáticamente — sin CLI.</span>
+                <span>Los usuarios añadidos arriba se hashean (apr1, salteado) y se escriben en un .htpasswd generado automáticamente — sin CLI.</span>
               </div>
             </div>
           )}
