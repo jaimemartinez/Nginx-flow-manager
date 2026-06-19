@@ -577,6 +577,7 @@ export function parseNginxConfig(filename: string, isEnabled: boolean, rawText: 
       const serverAccessRules: any[] = [];
       let authMode: 'none' | 'basic' | 'auth_request' = 'none';
       let authBasic = '', authBasicUserFile = '', authRequestUri = '';
+      let authBasicOff = false;
       const authRequestHeadersForward: any[] = [];
       const unparsedSrvNodes: NginxASTNode[] = [];
       const locationChildren: NginxBlock[] = [];
@@ -653,7 +654,10 @@ export function parseNginxConfig(filename: string, isEnabled: boolean, rawText: 
         } else if (name === 'rewrite') {
           serverRewrites.push({ id: `rw-${Math.random().toString(36).substring(2, 9)}`, regex: args[0], replacement: args[1], flag: args[2] || 'none', enabled: true });
         } else if (name === 'auth_basic') {
-          authMode = 'basic'; authBasic = args.join(' ');
+          // `auth_basic off;` disables auth (incl. anything inherited) — model it as a distinct
+          // flag, NOT a realm literally named "off" (which would re-enable auth on recompile).
+          if ((args[0] || '').replace(/^["']|["']$/g, '').toLowerCase() === 'off') authBasicOff = true;
+          else { authMode = 'basic'; authBasic = args.join(' '); }
         } else if (name === 'auth_basic_user_file') {
           authBasicUserFile = args[0] || '';
         } else if (name === 'auth_request') {
@@ -700,6 +704,7 @@ export function parseNginxConfig(filename: string, isEnabled: boolean, rawText: 
           ssl_force_redirect: sslForceRedirect,
           headers: serverHeaders,
           auth_mode: authMode,
+          auth_basic_off: authBasicOff,
           auth_basic: authBasic,
           auth_basic_user_file: authBasicUserFile,
           auth_request_uri: authRequestUri,
@@ -743,6 +748,7 @@ export function parseNginxConfig(filename: string, isEnabled: boolean, rawText: 
         const locHeaders: any[] = [], locRewrites: any[] = [], locErrorPages: any[] = [];
         const locAccessRules: any[] = [];
         let locAuthMode: 'none' | 'basic' | 'auth_request' = 'none';
+        let locAuthBasicOff = false;
         let locAuthBasic = '', locAuthBasicUserFile = '', locAuthRequestUri = '';
         const locAuthRequestHeadersForward: any[] = [];
         const unparsedLocNodes: NginxASTNode[] = [];
@@ -782,7 +788,9 @@ export function parseNginxConfig(filename: string, isEnabled: boolean, rawText: 
           } else if (name === 'rewrite') {
             locRewrites.push({ id: `rw-loc-${Math.random().toString(36).substring(2, 9)}`, regex: args[0], replacement: args[1], flag: args[2] || 'none', enabled: true });
           } else if (name === 'auth_basic') {
-            locAuthMode = 'basic'; locAuthBasic = args.join(' ');
+            // `auth_basic off;` disables inherited auth — model as a flag, not a realm named "off".
+            if ((args[0] || '').replace(/^["']|["']$/g, '').toLowerCase() === 'off') locAuthBasicOff = true;
+            else { locAuthMode = 'basic'; locAuthBasic = args.join(' '); }
           } else if (name === 'auth_basic_user_file') {
             locAuthBasicUserFile = args[0] || '';
           } else if (name === 'auth_request') {
@@ -825,6 +833,7 @@ export function parseNginxConfig(filename: string, isEnabled: boolean, rawText: 
             rewrites: locRewrites,
             error_pages: locErrorPages,
             auth_mode: locAuthMode,
+            auth_basic_off: locAuthBasicOff,
             auth_basic: locAuthBasic,
             auth_basic_user_file: locAuthBasicUserFile,
             auth_request_uri: locAuthRequestUri,

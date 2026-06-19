@@ -110,6 +110,7 @@ export type ServerNodeData = {
   headers?: NginxHeader[];
   auth_mode?: 'none' | 'basic' | 'auth_request';
   auth_basic_enabled?: boolean;
+  auth_basic_off?: boolean; // explicitly emit `auth_basic off;` to disable auth inherited from an ancestor (server cascade)
   auth_basic?: string; // Realm name, e.g. 'Restricted Area'
   auth_basic_user_file?: string; // e.g. '/etc/nginx/.htpasswd'
   auth_basic_users?: NginxBasicAuthUser[]; // UI-managed htpasswd entries (username + apr1 hash); the compiler emits the .htpasswd file so no CLI is needed
@@ -151,6 +152,7 @@ export type LocationNodeData = {
   headers?: NginxHeader[];
   auth_mode?: 'none' | 'basic' | 'auth_request';
   auth_basic_enabled?: boolean;
+  auth_basic_off?: boolean; // explicitly emit `auth_basic off;` to disable auth inherited from an ancestor (server cascade)
   auth_basic?: string; // Realm name, e.g. 'Restricted Area'
   auth_basic_user_file?: string; // e.g. '/etc/nginx/.htpasswd'
   auth_basic_users?: NginxBasicAuthUser[]; // UI-managed htpasswd entries (username + apr1 hash); the compiler emits the .htpasswd file so no CLI is needed

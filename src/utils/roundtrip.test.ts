@@ -411,3 +411,77 @@ describe('round-trip fidelity corpus — auto-strip Authorization for proxied Ba
     expect(out2).toContain('proxy_set_header Authorization "";');
   });
 });
+
+// ── Backslash / escape fidelity ──────────────────────────────────────────────
+// Locks the tokenizer's escape handling, which is deliberately nginx-faithful:
+//   • an UNQUOTED backslash (the correct nginx way to write a regex metachar, e.g. `\.`) is
+//     preserved verbatim — losing it would change `\.` (literal dot) into `.` (any char);
+//   • an escaped quote inside a quoted value (`"a\"b"`) round-trips with the escape intact.
+// (A single backslash inside a quoted string IS collapsed — `"\.x"` → `.x` — exactly as nginx's
+// own config tokenizer does, so that is correct behavior, not a loss.) These guard against a
+// well-meaning "fix" that would re-introduce a semantic regression.
+describe('round-trip fidelity corpus — backslash & escape handling', () => {
+  it('preserves an unquoted regex backslash in a location modifier path', () => {
+    const raw = `server {
+    listen 80;
+    server_name re.example.com;
+    location ~ \\.php$ {
+        proxy_pass http://127.0.0.1:9000;
+    }
+}
+`;
+    const out = roundTrip('re.example.com.conf', raw);
+    // The literal-dot regex survives byte-for-byte (not flattened to `.php$`).
+    expect(out).toContain('location ~ \\.php$ {');
+  });
+
+  it('preserves an escaped double-quote inside an unmodeled directive value', () => {
+    const raw = `server {
+    listen 80;
+    server_name q.example.com;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header X-Q "a\\"b";
+    }
+}
+`;
+    const out = roundTrip('q.example.com.conf', raw);
+    expect(out).toContain('proxy_set_header X-Q "a\\"b";');
+  });
+});
+
+// ── auth_basic off (disable inherited auth) ──────────────────────────────────
+// `auth_basic off;` must round-trip as a disable directive, NOT as a realm literally named "off"
+// (which would re-enable auth on recompile — a silent security regression).
+describe('round-trip fidelity corpus — auth_basic off', () => {
+  const FIX_AUTH_OFF = `server {
+    listen 443 ssl;
+    server_name app.example.com;
+    ssl_certificate /etc/ssl/app.crt;
+    ssl_certificate_key /etc/ssl/app.key;
+
+    auth_basic "Members";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location /public {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:8080;
+    }
+}
+`;
+
+  it('round-trips `auth_basic off;` verbatim and never as a realm named "off"', () => {
+    const out = roundTrip('app.example.com.conf', FIX_AUTH_OFF);
+    expect(out).toContain('auth_basic off;');
+    expect(out).not.toContain('auth_basic "off"');
+    // The server's own realm is preserved.
+    expect(out).toContain('auth_basic "Members";');
+  });
+
+  it('does not strip Authorization on a location whose auth is turned off', () => {
+    const out = roundTrip('app.example.com.conf', FIX_AUTH_OFF);
+    // /public proxies but disables inherited auth → no Basic creds to forward → no strip there.
+    const publicBlock = out.slice(out.indexOf('location /public'));
+    expect(publicBlock).not.toContain('proxy_set_header Authorization "";');
+  });
+});

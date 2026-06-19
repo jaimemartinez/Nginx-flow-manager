@@ -422,3 +422,20 @@ describe('compileNginxTopology — auto-strip Authorization for proxied Basic-Au
     expect(conf).not.toContain('proxy_set_header Authorization "";');
   });
 });
+
+describe('compileNginxTopology — auth_basic off (disable inherited auth)', () => {
+  it('emits `auth_basic off;` and does NOT strip Authorization on a proxied location under a Basic-auth server', () => {
+    const loc = locationNode('l1', {
+      path: '/public', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:8080', auth_basic_off: true,
+    });
+    const server = serverNode('srv1', { server_name: 'app.example.com', auth_mode: 'basic', auth_basic: 'Members' });
+    const conf = compileNginxTopology(
+      makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    )[SITE_PATH];
+
+    expect(conf).toContain('auth_basic off;');
+    expect(conf).not.toContain('auth_basic "off"');
+    // Auth is disabled here, so there are no Basic credentials to strip from the upstream.
+    expect(conf).not.toContain('proxy_set_header Authorization "";');
+  });
+});
