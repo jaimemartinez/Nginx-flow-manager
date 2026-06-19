@@ -20,6 +20,7 @@ import { tokenizeNginx, parseNginxAST, NginxASTNode, NginxDirective } from "./sr
 // server.ts now imports it instead of carrying its own duplicate copy.
 import { parseNginxConfig } from "./src/utils/nginxImport";
 import { HTPASSWD_DIR, orphanHtpasswdFiles } from "./src/utils/nginxCompiler";
+import { confinePosixPath, confineNginxPath as confineNginxPathUnder } from "./src/utils/pathConfine";
 // FIX #1: secrets-at-rest. encrypt/decrypt SSH password, SSH key, agent privateKey + secret at the
 // load/save boundary. decryptSecret() passes plaintext through, so existing configs keep working.
 import { encryptSecret, decryptSecret, isEncrypted } from "./src/utils/secretStore";
@@ -315,27 +316,9 @@ async function startServer() {
   // interpolated into remote shell command strings (e.g. sshWriteFile's mkdir), and legitimate
   // nginx config file paths never contain these characters — so rejecting them is safe and closes
   // the injection vector at the source (defense-in-depth alongside the shQuote in ssh-helper.ts).
-  const SHELL_META_RE = /[`$;|&<>(){}\n\r"']/;
-  function confinePosixPath(root: string, candidate: string): string | null {
-    if (typeof candidate !== "string" || candidate.includes("\0")) return null;
-    if (SHELL_META_RE.test(candidate)) return null; // SEC H1
-    const abs = path.posix.resolve(root, candidate);
-    const rel = path.posix.relative(root, abs);
-    if (rel === "" || rel.startsWith("..") || path.posix.isAbsolute(rel)) return null;
-    return abs;
-  }
-
-  // SEC C2: confine a "/etc/nginx/..." key to within the real NGINX_DIR. Returns the safe absolute
-  // path under NGINX_DIR, or null if the key does not start with /etc/nginx/ or escapes the tree.
-  // NGINX_DIR is a server-side POSIX path (e.g. /etc/nginx) on the managed host — both the remote
-  // SSH deploy and the (Linux) local deploy target it — so confine with POSIX semantics regardless
-  // of whether the panel process itself runs on Windows.
-  function confineNginxPath(p: string): string | null {
-    if (typeof p !== "string" || !p.startsWith("/etc/nginx/")) return null;
-    if (SHELL_META_RE.test(p)) return null; // SEC H1: reject shell metachars before any interpolation
-    const rel = p.substring("/etc/nginx/".length);
-    return confinePosixPath(NGINX_DIR, rel);
-  }
+  // SHELL_META_RE / confinePosixPath / confineNginxPath now live in ./src/utils/pathConfine (pure +
+  // unit-tested). confineNginxPath binds the NGINX_DIR of this server instance.
+  const confineNginxPath = (p: string): string | null => confineNginxPathUnder(p, NGINX_DIR);
 
   // SEC C3: validate an operator-supplied nginx path/binary before it is ever interpolated into a
   // shell command. Must be an absolute POSIX path with no shell metacharacters.
