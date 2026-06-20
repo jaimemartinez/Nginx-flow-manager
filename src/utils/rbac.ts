@@ -72,9 +72,16 @@ export function authorize(role: string | undefined | null, method: string, path:
   const lvl = roleLevel(role);
   const isWrite = !SAFE_METHODS.has((method || 'GET').toUpperCase());
 
-  if (/^\/api\/users(\/|$)/.test(path)) return { allowed: lvl >= 3, requiredRole: 'admin' };
-  if (isWrite && ADMIN_WRITE.some((re) => re.test(path))) return { allowed: lvl >= 3, requiredRole: 'admin' };
-  if (isWrite && !VIEWER_WRITE.some((re) => re.test(path))) return { allowed: lvl >= 2, requiredRole: 'operator' };
+  // SEC: Express routes case-INSENSITIVELY and non-strict by DEFAULT, so `/api/Users`, `/api/USERS`
+  // and `/api/reinstall/` all reach the SAME handlers as the canonical lowercase/no-slash path. The
+  // classification MUST therefore normalize first, or a lower-privileged user could evade an
+  // admin/operator gate just by changing the casing or adding a trailing slash. Normalize to the
+  // canonical form before matching so the decision is casing- and trailing-slash-proof.
+  const p = (path || '').toLowerCase().replace(/\/+$/, '') || '/';
+
+  if (/^\/api\/users(\/|$)/.test(p)) return { allowed: lvl >= 3, requiredRole: 'admin' };
+  if (isWrite && ADMIN_WRITE.some((re) => re.test(p))) return { allowed: lvl >= 3, requiredRole: 'admin' };
+  if (isWrite && !VIEWER_WRITE.some((re) => re.test(p))) return { allowed: lvl >= 2, requiredRole: 'operator' };
   return { allowed: lvl >= 1, requiredRole: 'viewer' };
 }
 
