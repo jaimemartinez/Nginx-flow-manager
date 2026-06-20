@@ -21,8 +21,8 @@ describe('md5 (RFC 1321 test vectors)', () => {
 
 describe('apr1 ($apr1$) — verified against `openssl passwd -apr1`', () => {
   it('matches openssl ground-truth vectors (fixed salt)', () => {
-    // openssl passwd -apr1 -salt SbiZ9PvX REDACTED-CREDENTIAL
-    expect(apr1('REDACTED-CREDENTIAL', 'SbiZ9PvX')).toBe('$apr1$SbiZ9PvX$.N25VbZG/zcQ3KhMVL6/9.');
+    // openssl passwd -apr1 -salt SbiZ9PvX correct-horse-staple
+    expect(apr1('correct-horse-staple', 'SbiZ9PvX')).toBe('$apr1$SbiZ9PvX$kZAs88LQRvbKqe3hBNUl2.');
     // openssl passwd -apr1 -salt abcdefgh password
     expect(apr1('password', 'abcdefgh')).toBe('$apr1$abcdefgh$FBwExRW4dCc8aL.OvjpIE1');
   });
