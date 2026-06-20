@@ -35,6 +35,10 @@ const sshUtils = createRequire(import.meta.url)("ssh2").utils;
 
 async function startServer() {
   const app = express();
+  // SEC: route case-sensitively so a non-canonical-cased path (e.g. /api/Users) no longer aliases a
+  // lower- or differently-gated handler. Defense-in-depth alongside the normalization in authorize()
+  // (the authorizer is the load-bearing fix; this stops the mismatch at the router too).
+  app.set("case sensitive routing", true);
 
   // Configuration persistence for installation path and admin credentials
   const CONFIG_FILE = path.join(process.cwd(), "app-config.json");
@@ -121,6 +125,11 @@ async function startServer() {
           users: cfg.users, adminUser: cfg.adminUser, adminPasswordHash: cfg.adminPasswordHash,
           id: crypto.randomBytes(8).toString("hex"), now: new Date().toISOString(),
         });
+        // Visibility for an orphaned (admin-less but non-empty) users list — only reachable by
+        // hand-editing the 0600 config; surface it loudly rather than silently bricking admin actions.
+        if (cfg.users.length > 0 && !cfg.users.some((u: NfmUser) => u.role === "admin")) {
+          console.error("[nfm] CRITICAL: app-config.json has users but NO admin — user/system management is locked. Restore an admin entry or reinstall.");
+        }
         // FIX #1: decrypt secrets at the LOAD boundary so the rest of the code sees plaintext (the
         // in-memory shape is unchanged). decryptSecret() passes plaintext through, so an existing
         // un-encrypted app-config.json keeps loading fine and is migrated to ciphertext on next save.
@@ -139,7 +148,7 @@ async function startServer() {
     return defaults;
   }
 
-  function saveConfig(cfg: AppConfig) {
+  function saveConfig(cfg: AppConfig): boolean {
     try {
       // FIX #1: encrypt the SSH password + private key at the SAVE boundary. Work on a shallow copy
       // so the live appConfig object stays plaintext for the rest of the process. encryptSecret() is
@@ -153,8 +162,10 @@ async function startServer() {
       fs.writeFileSync(CONFIG_FILE, JSON.stringify(onDisk, null, 2), { encoding: "utf-8", mode: 0o600 });
       try { fs.chmodSync(CONFIG_FILE, 0o600); } catch { /* Windows ignores POSIX perms */ }
       hardenSecretFileWindows(CONFIG_FILE); // SEC H1: ACL lock on Windows (0o600 is a no-op there)
+      return true;
     } catch (err) {
       console.error("Failed to write app-config.json:", err);
+      return false;
     }
   }
 
@@ -190,6 +201,11 @@ async function startServer() {
     if (!plaintext) return false;
     return (username === "admin" && plaintext === "admin123") || plaintext === username;
   }
+  // SEC: a throwaway scrypt hash, verified against even for an UNKNOWN username so login/reinstall
+  // latency is constant regardless of whether the username exists (closes user-enumeration via
+  // timing). Random input → it can never match an attacker's password, so the `!user` guard remains
+  // the sole authenticator.
+  const DUMMY_PASSWORD_HASH = makePasswordHash(crypto.randomBytes(32).toString("hex"));
 
   let appConfig = loadConfig();
   let NGINX_DIR = appConfig.nginxPath || "/etc/nginx";
@@ -849,7 +865,10 @@ async function startServer() {
     // RBAC: authenticate against the user list (any role). Constant-ish: verifyPassword always runs
     // for a found user; an unknown username falls through to the failure path.
     const user = (appConfig.users || []).find((u) => u.username === username);
-    if (user && verifyPassword(password || "", user.passwordHash)) {
+    // Always run exactly one scrypt verification (real hash or the dummy) so response latency does
+    // not reveal whether the username exists (SEC: user-enumeration via timing).
+    const pwOk = verifyPassword(password || "", user ? user.passwordHash : DUMMY_PASSWORD_HASH);
+    if (user && pwOk) {
       clearAuthFailures(ipKey);
       auditEvent("login_success", { ip: ipKey, username: user.username.slice(0, 128), role: user.role });
       // SEC M2: flag a known weak-default credential so the UI can prompt a change (per user, cached
@@ -912,12 +931,16 @@ async function startServer() {
     const { username, password, role } = req.body || {};
     if (!isValidUsername(username)) return res.status(400).json({ success: false, error: "Usuario inválido (1-64: letras, números, . _ @ -)." });
     if (!isValidRole(role)) return res.status(400).json({ success: false, error: "Rol inválido." });
-    if ((appConfig.users || []).some((u) => u.username === username)) return res.status(409).json({ success: false, error: "Ese usuario ya existe." });
+    // SEC P5: case-folded uniqueness so "Admin"/"admin"/"ADMIN" can't be three distinct accounts.
+    if ((appConfig.users || []).some((u) => u.username.toLowerCase() === String(username).toLowerCase())) return res.status(409).json({ success: false, error: "Ese usuario ya existe." });
     const pwErr = validateNewPassword(username, String(password || ""));
     if (pwErr) return res.status(400).json({ success: false, error: pwErr });
     const u: NfmUser = { id: crypto.randomBytes(8).toString("hex"), username, passwordHash: makePasswordHash(String(password)), role, createdAt: new Date().toISOString() };
-    appConfig.users = [...(appConfig.users || []), u];
-    saveConfig(appConfig);
+    // SEC P1: persist FIRST; roll back the in-memory edit and report failure if the disk write fails,
+    // so appConfig and disk never desync (a later loadConfig() reload can't silently revert the change).
+    const prev = appConfig.users || [];
+    appConfig.users = [...prev, u];
+    if (!saveConfig(appConfig)) { appConfig.users = prev; return res.status(500).json({ success: false, error: "No se pudo guardar (error de disco)." }); }
     auditEvent("user_create", { actor: getSession(sessionToken(req))?.username || "", username, role });
     res.json({ success: true, user: publicUser(u) });
   });
@@ -928,20 +951,36 @@ async function startServer() {
     const users = appConfig.users || [];
     const u = users.find((x) => x.id === id);
     if (!u) return res.status(404).json({ success: false, error: "Usuario no encontrado." });
+    const selfId = getSession(sessionToken(req))?.userId;
+
+    // Validate everything up front (no mutation yet).
     if (role !== undefined) {
       if (!isValidRole(role)) return res.status(400).json({ success: false, error: "Rol inválido." });
       if (wouldRemoveLastAdmin(users, id, role)) return res.status(409).json({ success: false, error: "No puedes degradar al único administrador." });
-      u.role = role;
-      // Apply the role change to that user's LIVE sessions so it takes effect without re-login.
-      for (const s of activeSessions.values()) if (s.userId === id) s.role = role;
+      // SEC P4: refuse self-demotion (would 403 the admin's own live session mid-use).
+      if (id === selfId && role !== "admin") return res.status(409).json({ success: false, error: "No puedes degradar tu propia cuenta; pide a otro administrador." });
     }
     if (password !== undefined) {
       const pwErr = validateNewPassword(u.username, String(password || ""));
       if (pwErr) return res.status(400).json({ success: false, error: pwErr });
+    }
+
+    // SEC P1: apply → save FIRST → roll back on a disk-write failure (and report 500), so the in-memory
+    // config and the on-disk file never diverge.
+    const oldRole = u.role, oldHash = u.passwordHash, oldMirror = appConfig.adminPasswordHash;
+    if (role !== undefined) u.role = role;
+    if (password !== undefined) {
       u.passwordHash = makePasswordHash(String(password));
       if (appConfig.adminUser === u.username) appConfig.adminPasswordHash = u.passwordHash; // legacy mirror
     }
-    saveConfig(appConfig);
+    if (!saveConfig(appConfig)) {
+      u.role = oldRole; u.passwordHash = oldHash; appConfig.adminPasswordHash = oldMirror;
+      return res.status(500).json({ success: false, error: "No se pudo guardar el cambio (error de disco)." });
+    }
+
+    // Live-session side-effects only AFTER a confirmed persistent save.
+    if (role !== undefined) for (const s of activeSessions.values()) if (s.userId === id) s.role = role; // role change takes effect without re-login
+    if (password !== undefined) for (const [tok, s] of activeSessions) if (s.userId === id && tok !== sessionToken(req)) activeSessions.delete(tok); // SEC P3: revoke the user's OTHER sessions on a password reset
     auditEvent("user_update", { actor: getSession(sessionToken(req))?.username || "", username: u.username, role: u.role, passwordChanged: password !== undefined });
     res.json({ success: true, user: publicUser(u) });
   });
@@ -952,9 +991,12 @@ async function startServer() {
     const u = users.find((x) => x.id === id);
     if (!u) return res.status(404).json({ success: false, error: "Usuario no encontrado." });
     if (wouldRemoveLastAdmin(users, id)) return res.status(409).json({ success: false, error: "No puedes eliminar al único administrador." });
-    appConfig.users = users.filter((x) => x.id !== id);
-    saveConfig(appConfig);
-    // Invalidate any live sessions belonging to the deleted user.
+    // SEC P4: refuse self-deletion (would log the acting admin out via their own request).
+    if (id === getSession(sessionToken(req))?.userId) return res.status(409).json({ success: false, error: "No puedes eliminar tu propia cuenta; pide a otro administrador." });
+    const prev = users;
+    appConfig.users = prev.filter((x) => x.id !== id);
+    if (!saveConfig(appConfig)) { appConfig.users = prev; return res.status(500).json({ success: false, error: "No se pudo guardar (error de disco)." }); }
+    // Invalidate any live sessions belonging to the deleted user (only after a confirmed save).
     for (const [tok, s] of activeSessions) if (s.userId === id) activeSessions.delete(tok);
     auditEvent("user_delete", { actor: getSession(sessionToken(req))?.username || "", username: u.username });
     res.json({ success: true });
@@ -1014,7 +1056,9 @@ async function startServer() {
     // Reinstall is destructive (wipes config + all users) → require an ADMIN's credentials, not just
     // an admin session. (The middleware already restricts the route to admins; this re-auth confirms.)
     const reUser = (appConfig.users || []).find((u) => u.username === username && u.role === "admin");
-    if (!reUser || !verifyPassword(password || "", reUser.passwordHash)) {
+    // Constant-time-ish: verify even when no matching admin exists (don't leak admin-username existence).
+    const reOk = verifyPassword(password || "", reUser ? reUser.passwordHash : DUMMY_PASSWORD_HASH);
+    if (!reUser || !reOk) {
       recordAuthFailure(ipKey);
       return res.status(401).json({ success: false, error: "Credenciales de administrador inválidas." });
     }

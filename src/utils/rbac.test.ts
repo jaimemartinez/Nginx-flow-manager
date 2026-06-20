@@ -82,6 +82,23 @@ describe('authorize — method/path nuance', () => {
   });
 });
 
+describe('authorize — casing / trailing-slash cannot evade the gate (Express routes case-insensitive)', () => {
+  it('mixed-case admin paths are still admin-only', () => {
+    expect(can('operator', 'POST', '/api/Users')).toBe(false);
+    expect(can('operator', 'POST', '/api/USERS')).toBe(false);
+    expect(can('operator', 'PUT', '/api/Users/abc')).toBe(false);
+    expect(can('operator', 'POST', '/api/Reinstall')).toBe(false);
+    expect(can('operator', 'POST', '/api/Agent/Install')).toBe(false);
+    expect(can('operator', 'POST', '/api/Tls-Cert')).toBe(false);
+    expect(can('admin', 'POST', '/api/Users')).toBe(true);
+  });
+  it('trailing slashes are stripped before classifying', () => {
+    expect(can('operator', 'POST', '/api/reinstall/')).toBe(false);     // ADMIN_WRITE uses $-anchors
+    expect(can('operator', 'POST', '/api/agent/install/')).toBe(false);
+    expect(can('viewer', 'GET', '/api/users/')).toBe(false);            // still admin
+  });
+});
+
 describe('ensureUsers — legacy migration', () => {
   it('seeds a single admin from a legacy config', () => {
     const u = ensureUsers({ adminUser: 'jaime', adminPasswordHash: 'scrypt$aa$bb', id: 'u1', now: 'T0' });
