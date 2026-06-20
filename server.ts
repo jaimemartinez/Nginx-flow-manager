@@ -31,7 +31,10 @@ import { encryptSecret, decryptSecret, isEncrypted, hardenSecretFileWindows } fr
 import { rewriteSandboxPaths, neutralizeRuntimeDirectives } from "./src/utils/sandboxRewrite";
 
 // ssh2 exposes `utils` only via CommonJS (not an ESM named export); reach it through require.
-const sshUtils = createRequire(import.meta.url)("ssh2").utils;
+// In dev (tsx/ESM) import.meta.url is the module URL; once esbuild bundles to CJS for production,
+// import.meta.url is `undefined` (which would crash createRequire at startup) but `__filename` is
+// defined — so prefer it. This keeps BOTH `tsx server.ts` (dev) and `node dist/server.cjs` (prod) working.
+const sshUtils = createRequire(typeof __filename !== "undefined" ? __filename : import.meta.url)("ssh2").utils;
 
 async function startServer() {
   const app = express();
