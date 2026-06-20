@@ -6,6 +6,14 @@
  * top of the SSH forced-command channel), anti-replay, path confinement, and input validators.
  * The agent's API is intentionally narrow — there is NO generic exec or arbitrary-path write —
  * so these guards are the final boundary, not the only one.
+ *
+ * SEC L2 (replay scope): the forced command spawns a FRESH agent process per SSH connection, so the
+ * nonce cache below is PER-CHANNEL — it detects replays within one live channel but NOT across a
+ * reconnect within REPLAY_WINDOW_SEC. Callers must therefore NOT assume exactly-once semantics for
+ * non-idempotent RPCs (e.g. certs.delete, config.deploy) purely from this HMAC layer; the SSH
+ * transport (encrypted, host-key-pinned) is what makes capturing a valid frame to replay hard.
+ * A cross-reconnect guard (persisting accepted nonces to a root-owned file for the window) is a
+ * possible future hardening.
  */
 import * as crypto from 'crypto';
 import * as path from 'path';
