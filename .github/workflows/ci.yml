@@ -35,6 +35,14 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Audit dependencies
+        # Surfaces known-vulnerable dependencies (CVEs) on every push/PR. Non-gating
+        # (continue-on-error) so a freshly-published transitive advisory doesn't block unrelated
+        # changes — Dependabot (.github/dependabot.yml) opens the remediation PRs. Review the
+        # step's output; tighten to a gating `--audit-level=critical` once the tree is clean.
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
       - name: Build on-server agent
         run: npm install --no-audit --no-fund && npm run build
         working-directory: agent

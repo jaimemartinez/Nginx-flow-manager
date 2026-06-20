@@ -128,6 +128,7 @@ The nginx **parser** (config text → AST) lives in `src/utils/nginxParser.ts` (
 - [docs/SECURITY.md](docs/SECURITY.md) — auth, sessions, secrets, agent confinement, the hardening model.
 - [docs/AGENT.md](docs/AGENT.md) — the on-server nfm-agent: install, forced-command SSH, HMAC RPC, ops, fallbacks.
 - [docs/API.md](docs/API.md) — HTTP API reference (endpoints, auth, request/response).
+- [docs/BACKUP.md](docs/BACKUP.md) — backup, restore, and disaster recovery (what to copy, the master-key caveat).
 
 ## Security
 

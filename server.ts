@@ -3878,6 +3878,23 @@ http {
   httpsServer.listen(PORT, BIND_HOST, () => {
     console.log(`Server running on https://localhost:${PORT} (bound to ${BIND_HOST})`);
   });
+
+  // Graceful shutdown: stop accepting new connections and let in-flight requests drain on a
+  // container stop / Ctrl-C, then exit. A bounded fallback force-exits if connections won't drain,
+  // so an orchestrator's SIGTERM→SIGKILL window is respected. Idempotent across repeated signals.
+  let shuttingDown = false;
+  const shutdown = (sig: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[nfm] ${sig} received — shutting down gracefully…`);
+    const force = setTimeout(() => { console.warn("[nfm] drain timeout — forcing exit."); process.exit(0); }, 10000);
+    force.unref();
+    try {
+      httpsServer?.close(() => { console.log("[nfm] HTTPS server closed; bye."); clearTimeout(force); process.exit(0); });
+    } catch { process.exit(0); }
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 startServer();

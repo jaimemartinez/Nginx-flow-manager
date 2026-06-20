@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # Root app dependencies (Express, ssh2, React, build tooling, …).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per week grouping non-major bumps keeps the noise down for a small project.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    labels: ["dependencies"]
+
+  # The on-server agent (dev-only build deps; the bundle itself uses Node builtins).
+  - package-ecosystem: "npm"
+    directory: "/agent"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "agent"]
+
+  # Keep the GitHub Actions (checkout/setup-node) patched.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["ci"]
