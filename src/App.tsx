@@ -43,7 +43,6 @@ import {
   History,
   GitCommit,
   AlertTriangle,
-  Cpu,
   Lock,
   Users,
   Eye
@@ -320,11 +319,11 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
             return (
               <button
                 onClick={() => setAgentOpen(true)}
-                title="Estado del agente seguro del servidor — clic para gestionar/instalar"
-                className={`hidden 2xl:flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 text-xs font-mono whitespace-nowrap shrink-0 cursor-pointer transition-colors ${m.cls}`}
+                title={`${m.text} — clic para gestionar/instalar el agente`}
+                className={`flex items-center gap-2 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 text-xs font-mono whitespace-nowrap shrink-0 cursor-pointer transition-colors ${m.cls}`}
               >
                 <span className={`w-2 h-2 rounded-full ${m.dot}`}></span>
-                {m.text}
+                <span className="hidden 2xl:inline">{m.text}</span>
               </button>
             );
           })()}
@@ -341,40 +340,29 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
             <strong className="text-emerald-400">{activeStats.enabledSites}</strong>
           </div>
 
-          <div className="flex items-center gap-1.5 xl:gap-2 pl-1.5 xl:pl-2 border-l border-white/10 shrink-0">
-            <button
-              onClick={() => setAgentOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-violet-500/15 rounded border border-white/10 hover:border-violet-500/30 text-xs text-slate-300 hover:text-violet-300 font-mono transition-all cursor-pointer"
-              title="Agente seguro del servidor (instalar / estado / streaming)"
-            >
-              <Cpu size={13} className="text-violet-400" />
-              <span className="hidden 2xl:inline">Agente</span>
-            </button>
+          <div className="flex items-center gap-1.5 pl-1.5 xl:pl-2 border-l border-white/10 shrink-0">
             <button
               onClick={() => setCertOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-[#009639]/15 rounded border border-white/10 hover:border-[#009639]/30 text-xs text-slate-300 hover:text-emerald-300 font-mono transition-all cursor-pointer"
-              title="Gestionar certificados SSL (Let's Encrypt / certbot)"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-[#009639]/15 rounded border border-white/10 hover:border-[#009639]/30 text-xs text-slate-300 hover:text-emerald-300 font-mono transition-all cursor-pointer shrink-0"
+              title="Certificados SSL (Let's Encrypt / certbot)"
             >
               <ShieldCheck size={13} className="text-[#009639]" />
-              <span className="hidden 2xl:inline">Certificados</span>
             </button>
             <button
               onClick={() => setTlsOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-sky-500/15 rounded border border-white/10 hover:border-sky-500/30 text-xs text-slate-300 hover:text-sky-300 font-mono transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-sky-500/15 rounded border border-white/10 hover:border-sky-500/30 text-xs text-slate-300 hover:text-sky-300 font-mono transition-all cursor-pointer shrink-0"
               title="Certificado HTTPS del propio panel (puerto 3000)"
             >
               <Lock size={13} className="text-sky-400" />
-              <span className="hidden 2xl:inline">HTTPS</span>
             </button>
 
             {isAdmin && (
               <button
                 onClick={() => setUsersOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-emerald-500/15 rounded border border-white/10 hover:border-emerald-500/30 text-xs text-slate-300 hover:text-emerald-300 font-mono transition-all cursor-pointer shrink-0"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-emerald-500/15 rounded border border-white/10 hover:border-emerald-500/30 text-xs text-slate-300 hover:text-emerald-300 font-mono transition-all cursor-pointer shrink-0"
                 title="Gestión de usuarios y roles"
               >
                 <Users size={13} className="text-emerald-400" />
-                <span className="hidden 2xl:inline">Usuarios</span>
               </button>
             )}
 
