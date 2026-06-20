@@ -455,8 +455,19 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
         const res = await secureFetch('/api/state', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state: blob }),
+          // Optimistic concurrency: tell the server the version we based this edit on so it can
+          // reject (409) instead of silently clobbering a change another operator/tab saved meanwhile.
+          body: JSON.stringify({ state: blob, expectedUpdatedAt: lastSyncedAtRef.current || undefined }),
         });
+        if (res.status === 409) {
+          // Another writer moved the workspace forward. Pull their version so we don't overwrite it
+          // (conflict-aware rather than last-write-wins); local unsaved edits are superseded.
+          try {
+            const latest = await (await secureFetch('/api/state')).json();
+            if (latest.success && latest.state) { applyServerState(latest.state); lastSyncedAtRef.current = latest.updatedAt; }
+          } catch { /* will retry on next change / focus resync */ }
+          return;
+        }
         const data = await res.json();
         if (data.success) lastSyncedAtRef.current = data.updatedAt || lastSyncedAtRef.current;
       } catch { /* retried on next change */ }
