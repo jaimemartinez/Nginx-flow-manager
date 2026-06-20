@@ -41,6 +41,15 @@ COPY --from=build /app/package.json ./package.json
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# SEC M4: run the privileged panel as a NON-root user. It only needs to bind 3000 (>1024) and write
+# the /data volume, so dropping root limits the blast radius of any panel-level bug (an RCE/SSRF/
+# traversal would otherwise execute as root with full read of the master key + agent SSH key). A
+# NAMED volume inherits this ownership; a BIND-mounted /data must be pre-chowned to the nfm uid (101)
+# since Docker does not auto-chown bind mounts.
+RUN groupadd -r nfm && useradd -r -g nfm -d /data -s /usr/sbin/nologin nfm \
+ && mkdir -p /data && chown nfm:nfm /data
+USER nfm
+
 # All writable state (workspace-state.json, app-config.json, agent-config.json, nfm-master.key,
 # certs/, logs/) is created under the CWD, which the entrypoint points at this volume.
 VOLUME /data

@@ -280,6 +280,13 @@ export class Ops {
           const resolvedTarget = path.resolve(path.dirname(dst), src);
           const rel = path.relative(this.cfg.nginxDir, resolvedTarget);
           if (rel.startsWith('..') || path.isAbsolute(rel)) continue; // link escapes /etc/nginx — refuse
+          // SEC L3: also re-confine the realpath of the link's PARENT dir, so a pre-existing
+          // directory-symlink under sites-enabled can't place the new link outside /etc/nginx
+          // (mirrors the file-write branch above; the validated target alone isn't enough).
+          let dstParentReal: string;
+          try { dstParentReal = await fs.realpath(path.dirname(dst)); } catch { continue; }
+          const dprel = path.relative(this.cfg.nginxDir, dstParentReal);
+          if (dprel.startsWith('..') || path.isAbsolute(dprel)) continue;
           await fs.symlink(src, dst).catch(() => {});
         }
         log('Symlinks de sites-enabled reconciliados');
