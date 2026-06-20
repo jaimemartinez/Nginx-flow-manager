@@ -26,3 +26,6 @@ agent-config.json
 *.crt
 *.p12
 *.pfx
+
+# Integration-test scratch output (keys/secret/bundles — never commit)
+itest-out/
