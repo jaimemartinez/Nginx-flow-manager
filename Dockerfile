@@ -11,10 +11,14 @@ WORKDIR /app
 
 # Dependencies first (better layer caching). The agent has no deps of its own; its build
 # (esbuild/tsx) resolves from the root node_modules via npm's ancestor .bin PATH.
+# SEC M5: prefer `npm ci` (deterministic, fails on drift, honors integrity hashes) for the release
+# image. Fall back to `npm install` ONLY because the lockfile is authored on Windows and omits some
+# Linux-only optional platform deps (npm/cli#4828), which makes strict `ci` abort on the Linux build
+# — so when the lockfile is Linux-complete you get a reproducible build, otherwise it still builds.
 COPY package.json package-lock.json ./
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 COPY agent/package.json agent/package-lock.json ./agent/
-RUN cd agent && npm install --no-audit --no-fund
+RUN cd agent && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund)
 
 # Build the panel (vite -> dist/, esbuild -> dist/server.cjs) and the on-server agent bundle
 # (agent/dist/nfm-agent.cjs, which the panel uploads to managed hosts). Prune dev deps AFTER both
