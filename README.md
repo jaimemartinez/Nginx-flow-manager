@@ -19,6 +19,7 @@ Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. Its 
 - **Live traffic animation** — animate request flow across the canvas edges from parsed log events.
 - **First-class graphical directives** — HTTP/2, HSTS, WebSocket upgrade, `try_files`/`alias`, proxy tuning, `expires` caching, and `allow`/`deny` access control are editable as structured fields, not raw text.
 - **conf.d / snippets editing** — included files outside the topology are kept as `extra_files` and written back verbatim.
+- **Multi-user RBAC** — three roles (admin / operator / viewer) with a single deny-by-default authorization gate: viewers read-only, operators edit + deploy, admins also manage users and system/agent settings. Manage users from the UI; an existing single-admin install is migrated transparently.
 
 ## How it works
 
@@ -130,7 +131,7 @@ The nginx **parser** (config text → AST) lives in `src/utils/nginxParser.ts` (
 
 ## Security
 
-The panel is **HTTPS-only**. Authentication uses an **HttpOnly, Secure, `SameSite=Strict` session cookie** (`nfm_session`) plus an un-forgeable `X-NFM-CSRF` header on every state-changing request, with scrypt-hashed credentials, session TTLs, and login rate-limiting. Secrets (`app-config.json`, `workspace-state.json`, `agent-config.json`, certs, `.env*`) are written with restrictive permissions, gitignored, and denied from the dev file server. For hardened deploys, the **nfm-agent** runs behind an SSH forced command with HMAC-authenticated RPC and filesystem path confinement. See [docs/SECURITY.md](docs/SECURITY.md).
+The panel is **HTTPS-only** and binds `127.0.0.1` by default (opt into `0.0.0.0` via `NFM_HOST`). Authentication uses an **HttpOnly, Secure, `SameSite=Strict` session cookie** (`nfm_session`) plus an un-forgeable `X-NFM-CSRF` header on every state-changing request, with scrypt-hashed credentials, session TTLs, and login rate-limiting. Authorization is **role-based** (admin/operator/viewer) via a single deny-by-default decision the server enforces on every request. Secrets (`app-config.json`, `workspace-state.json`, `agent-config.json`, certs, `.env*`) are written with restrictive permissions, gitignored, and denied from the dev file server. For hardened deploys, the **nfm-agent** runs behind an SSH forced command with HMAC-authenticated RPC and filesystem path confinement. See [docs/SECURITY.md](docs/SECURITY.md).
 
 ## License
 
