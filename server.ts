@@ -799,11 +799,13 @@ async function startServer() {
 
     const ipKey = clientIp(req);
     if (authThrottled(ipKey)) {
+      auditEvent("login_throttled", { ip: ipKey, username: String(username ?? "") });
       return res.status(429).json({ success: false, error: "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo." });
     }
 
     if (username === appConfig.adminUser && verifyPassword(password || "", appConfig.adminPasswordHash)) {
       clearAuthFailures(ipKey);
+      auditEvent("login_success", { ip: ipKey, username: String(username ?? "") });
       // SEC M2: warn the UI when the live credentials are a known weak default so it can prompt a change.
       // SEC I1: cache the result on appConfig so /api/me can return it without re-running scryptSync.
       const passwordIsDefault = isDefaultCredential(username, password || "");
@@ -827,6 +829,7 @@ async function startServer() {
     }
 
     recordAuthFailure(ipKey);
+    auditEvent("login_failure", { ip: ipKey, username: String(username ?? "") });
     res.status(401).json({ success: false, error: "Credenciales de administrador inválidas." });
   });
 
@@ -3105,6 +3108,19 @@ http {
       fs.appendFileSync(DEPLOY_AUDIT_FILE, line, { encoding: "utf-8", mode: 0o600 });
     } catch (err: any) {
       console.warn("Nginx Flow Manager: no se pudo escribir la línea de auditoría de deploy:", err?.message || err);
+    }
+  }
+
+  // General security audit (auth events, etc.) — same append-only JSONL, same best-effort discipline
+  // (never throws into a request path). Complements the deploy-specific trail above.
+  const SECURITY_AUDIT_FILE = path.join(STATE_DIR, "security-audit.jsonl");
+  function auditEvent(event: string, entry: Record<string, unknown>) {
+    try {
+      fs.mkdirSync(STATE_DIR, { recursive: true });
+      const line = JSON.stringify({ ts: new Date().toISOString(), event, ...entry }) + "\n";
+      fs.appendFileSync(SECURITY_AUDIT_FILE, line, { encoding: "utf-8", mode: 0o600 });
+    } catch (err: any) {
+      console.warn("Nginx Flow Manager: no se pudo escribir la línea de auditoría de seguridad:", err?.message || err);
     }
   }
 
