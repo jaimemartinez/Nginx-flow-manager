@@ -3397,7 +3397,21 @@ http {
 
         try {
           fs.mkdirSync(path.dirname(actualWritePath), { recursive: true });
-          fs.writeFileSync(actualWritePath, writeContent);
+          // SEC M2: confineNginxPath is LEXICAL only — it can't see a symlink component. Re-confine
+          // the realpath of the parent dir so an intermediate directory-symlink under /etc/nginx
+          // (e.g. Debian's modules-enabled, or one preserved by a cp -a backup) can't redirect the
+          // write outside the tree, and open with O_NOFOLLOW so a final-component symlink fails too.
+          // Mirrors the agent's hardening (agent/src/ops.ts). No-op-safe on platforms without
+          // O_NOFOLLOW (the managed nginx host is Linux regardless of where the panel runs).
+          const parentReal = fs.realpathSync(path.dirname(actualWritePath));
+          const prel = path.relative(NGINX_DIR, parentReal);
+          if (prel.startsWith("..") || path.isAbsolute(prel)) {
+            addDeployLog(`Escritura de archivo: ${filePath}`, `Omitido por seguridad: un symlink de directorio bajo ${NGINX_DIR} escapa del árbol.`, "error");
+            continue;
+          }
+          const NOFOLLOW = (fs.constants.O_NOFOLLOW || 0);
+          const fd = fs.openSync(actualWritePath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_TRUNC | NOFOLLOW, 0o644);
+          try { fs.writeSync(fd, writeContent); } finally { fs.closeSync(fd); }
           addDeployLog(`Escritura de archivo: ${filePath}`, `Escritos ${writeContent.length} caracteres con éxito en ${actualWritePath}.`, "success");
         } catch (writeErr: any) {
           addDeployLog(`Escritura de archivo: ${filePath}`, `Error al escribir el archivo: ${writeErr.message}`, "error");
@@ -3460,7 +3474,19 @@ http {
           if (active) {
             try {
               fs.mkdirSync(path.dirname(mappedTarget), { recursive: true });
-              
+
+              // SEC M2: re-confine the realpath of the link's parent dir (lexical confine can't see a
+              // directory-symlink under sites-enabled that escapes the tree) AND re-confine the link's
+              // resolved target, mirroring the agent. Refuse rather than rm/symlink outside /etc/nginx.
+              const tparentReal = fs.realpathSync(path.dirname(mappedTarget));
+              const tprel = path.relative(NGINX_DIR, tparentReal);
+              const resolvedTarget = path.resolve(path.dirname(mappedTarget), mappedSource);
+              const rtrel = path.relative(NGINX_DIR, resolvedTarget);
+              if (tprel.startsWith("..") || path.isAbsolute(tprel) || rtrel.startsWith("..") || path.isAbsolute(rtrel)) {
+                addDeployLog(`ln -s ${source} ${target}`, `Enlace omitido por seguridad: el directorio destino o el enlace resuelto escapa de ${NGINX_DIR}.`, "error");
+                continue;
+              }
+
               // Clean existing target if it exists
               try {
                 const stat = fs.lstatSync(mappedTarget);
