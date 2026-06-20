@@ -24,7 +24,7 @@ import { confinePosixPath, confineNginxPath as confineNginxPathUnder } from "./s
 import { migrateWorkspaceState, CURRENT_SCHEMA_VERSION, isStateWriteConflict } from "./src/utils/stateMigrate";
 // FIX #1: secrets-at-rest. encrypt/decrypt SSH password, SSH key, agent privateKey + secret at the
 // load/save boundary. decryptSecret() passes plaintext through, so existing configs keep working.
-import { encryptSecret, decryptSecret, isEncrypted } from "./src/utils/secretStore";
+import { encryptSecret, decryptSecret, isEncrypted, hardenSecretFileWindows } from "./src/utils/secretStore";
 // FIX #5: AST-aware sandbox path rewrite + runtime-directive neutralization, shared by the local and
 // remote-SSH validation sandboxes (replaces the blunt global `/etc/nginx/` string replace).
 import { rewriteSandboxPaths, neutralizeRuntimeDirectives } from "./src/utils/sandboxRewrite";
@@ -140,6 +140,7 @@ async function startServer() {
       // 0o600: the file holds the admin hash and (in remote mode) SSH password / private key.
       fs.writeFileSync(CONFIG_FILE, JSON.stringify(onDisk, null, 2), { encoding: "utf-8", mode: 0o600 });
       try { fs.chmodSync(CONFIG_FILE, 0o600); } catch { /* Windows ignores POSIX perms */ }
+      hardenSecretFileWindows(CONFIG_FILE); // SEC H1: ACL lock on Windows (0o600 is a no-op there)
     } catch (err) {
       console.error("Failed to write app-config.json:", err);
     }
@@ -1912,6 +1913,7 @@ http {
     // Re-assert in case the file pre-existed with looser perms (writeFile's mode only applies on
     // creation; an existing file keeps its perms). No-op on Windows.
     try { fs.chmodSync(AGENT_CONFIG_FILE, 0o600); } catch (_) {}
+    hardenSecretFileWindows(AGENT_CONFIG_FILE); // SEC H1: ACL lock on Windows (0o600 is a no-op there)
   }
   function clearAgentConfig() {
     try { if (fs.existsSync(AGENT_CONFIG_FILE)) fs.unlinkSync(AGENT_CONFIG_FILE); } catch (_) {}
@@ -1936,10 +1938,12 @@ http {
     const tokenB64 = Buffer.from(secret).toString("base64");
     const steps: any[] = [];
 
-    // Upload the binary + all install files to /tmp (no privilege needed).
-    await sshWriteFile(ssh, "/tmp/nfm-agent.upload", artifact);
+    // Upload the binary + all install files to /tmp (no privilege needed). SEC M3: stage them 0600
+    // so the HMAC token / authkeys / sudoers aren't world-readable in /tmp during the install window
+    // (the privileged script reads them as root and removes them at the end).
+    await sshWriteFile(ssh, "/tmp/nfm-agent.upload", artifact, 0o600);
     for (const [p, content] of Object.entries(installUploads(kp.public, tokenB64))) {
-      await sshWriteFile(ssh, p, content);
+      await sshWriteFile(ssh, p, content, 0o600);
     }
 
     // Run the install script with the minimum privilege that works: root, else passwordless sudo,

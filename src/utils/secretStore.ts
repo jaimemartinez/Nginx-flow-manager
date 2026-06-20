@@ -289,6 +289,25 @@ export function decryptSecret(value: string): string {
   }
 }
 
+/**
+ * Lock a freshly-written secret file down to the current user on Windows (SEC H1).
+ *
+ * `chmod 0o600` is a no-op on Windows, so if DPAPI is unavailable and encryptSecret() falls back to
+ * plaintext, the SSH key / agent secret would otherwise sit readable by every local user — the exact
+ * threat this module exists to prevent. Apply a restrictive ACL (remove inherited ACEs, grant only
+ * the current user) so local-user isolation holds even when encryption can't. No-op on POSIX, where
+ * the 0o600 mode at write time already suffices. Best-effort: never throws.
+ */
+export function hardenSecretFileWindows(file: string): void {
+  if (process.platform !== "win32") return;
+  const user = process.env.USERNAME;
+  if (!user) return;
+  try {
+    // /inheritance:r removes all inherited ACEs; /grant:r <user>:F then leaves ONLY the current user.
+    spawnSync("icacls", [file, "/inheritance:r", "/grant:r", `${user}:F`], { timeout: 10000, windowsHide: true });
+  } catch { /* best-effort hardening — leaving the 0o600 (no-op on win) is the prior behavior */ }
+}
+
 // ── Module-load self-test ─────────────────────────────────────────────────────────
 // Best-effort sanity check that the round-trip works on this host. Purely diagnostic;
 // must never throw (so importing this module can't crash the server).

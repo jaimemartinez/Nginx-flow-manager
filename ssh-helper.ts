@@ -120,7 +120,7 @@ export function sshReadFile(cfg: SshConfig, remotePath: string): Promise<string>
   });
 }
 
-export function sshWriteFile(cfg: SshConfig, remotePath: string, content: string): Promise<void> {
+export function sshWriteFile(cfg: SshConfig, remotePath: string, content: string, mode?: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const conn = new Client();
     conn.on('ready', () => {
@@ -133,7 +133,12 @@ export function sshWriteFile(cfg: SshConfig, remotePath: string, content: string
         conn.exec(`mkdir -p ${shQuote(dir)}`, (mkErr, stream) => {
           if (mkErr) { conn.end(); return reject(mkErr); }
           stream.on('close', () => {
-            sftp.writeFile(remotePath, content, 'utf8', (writeErr) => {
+            // SEC M3: an optional mode lets sensitive uploads (e.g. the agent HMAC token, authkeys,
+            // sudoers) be created 0600 instead of the SFTP default (~0644, world-readable) so they
+            // aren't briefly exposed in /tmp on the managed host during install.
+            const writeOpts: { encoding: BufferEncoding; mode?: number } = { encoding: 'utf8' };
+            if (typeof mode === 'number') writeOpts.mode = mode;
+            sftp.writeFile(remotePath, content, writeOpts, (writeErr) => {
               conn.end();
               if (writeErr) return reject(writeErr);
               resolve();
@@ -184,13 +189,14 @@ export function sshFileExists(cfg: SshConfig, remotePath: string): Promise<boole
 }
 
 export function sshSymlinkExists(cfg: SshConfig, remotePath: string): Promise<boolean> {
-  return sshExec(cfg, `test -L "${remotePath}" && echo yes || echo no`)
+  // SEC L4: shQuote — double quotes do NOT suppress $()/backtick expansion (matches sshWriteFile).
+  return sshExec(cfg, `test -L ${shQuote(remotePath)} && echo yes || echo no`)
     .then(r => r.stdout.trim() === 'yes')
     .catch(() => false);
 }
 
 export function sshMkdir(cfg: SshConfig, remotePath: string): Promise<void> {
-  return sshExec(cfg, `mkdir -p "${remotePath}"`).then(() => {});
+  return sshExec(cfg, `mkdir -p ${shQuote(remotePath)}`).then(() => {}); // SEC L4: shQuote (see above)
 }
 
 export function sshTestConnection(cfg: SshConfig): Promise<void> {

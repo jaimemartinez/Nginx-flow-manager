@@ -83,6 +83,9 @@ export function systemdTimer(): string {
 export function installScript(): string {
   return `#!/usr/bin/env bash
 set -e
+# SEC M3: remove the staged secrets (HMAC token, authkeys, sudoers) even if the install aborts
+# before its explicit step-9 cleanup, so they don't linger in /tmp after a failed install.
+trap 'rm -f /tmp/nfm-agent.upload /tmp/nfm-agent.token /tmp/nfm-agent.authkeys /tmp/nfm-agent.sudoers /tmp/nfm-agent.service /tmp/nfm-agent.timer /tmp/nfm-install.sh' EXIT
 # 1. Node.js runtime (required by the agent)
 if ! command -v node >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then DEBIAN_FRONTEND=noninteractive apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs || true;
