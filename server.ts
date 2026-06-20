@@ -510,7 +510,9 @@ async function startServer() {
     res.json({ status: "ok", uptime: Math.round(process.uptime()) });
   });
   app.get("/readyz", (_req, res) => {
-    res.json({ status: "ready", setupCompleted: !!appConfig.setupCompleted, mode: appConfig.remoteMode ? "remote" : "local" });
+    // Unauthenticated: expose only liveness + whether first-run setup is done. Do NOT leak the
+    // deploy mode (remote/local) — that reveals the SSH topology to an anonymous client (SEC L1).
+    res.json({ status: "ready", setupCompleted: !!appConfig.setupCompleted });
   });
 
   app.use((req, res, next) => {
@@ -608,17 +610,20 @@ async function startServer() {
       } catch (e) {}
     }
 
-    // SEC I2: this endpoint is public (pre-auth). Only expose adminUser before setup is completed
-    // (the wizard prefills it); once configured, omit it so the admin username isn't leaked to
-    // unauthenticated clients — authenticated clients get it from /api/me.
+    // SEC I2/L1: this endpoint is public (pre-auth). Only the wizard (pre-setup) needs the detected
+    // nginx paths/binary and the prefilled adminUser; once configured, omit ALL of them so an
+    // unauthenticated client can't fingerprint the on-disk nginx layout or the admin username
+    // (authenticated clients get these from /api/me).
     res.json({
       success: true,
       setupCompleted: appConfig.setupCompleted,
       nginxDetected: autoDetected,
-      detectedPath,
-      detectedBinary,
-      nginxPath: appConfig.nginxPath || detectedPath,
-      ...(appConfig.setupCompleted ? {} : { adminUser: appConfig.adminUser }),
+      ...(appConfig.setupCompleted ? {} : {
+        detectedPath,
+        detectedBinary,
+        nginxPath: appConfig.nginxPath || detectedPath,
+        adminUser: appConfig.adminUser,
+      }),
     });
   });
 
@@ -799,13 +804,14 @@ async function startServer() {
 
     const ipKey = clientIp(req);
     if (authThrottled(ipKey)) {
-      auditEvent("login_throttled", { ip: ipKey, username: String(username ?? "") });
+      // Already rate-limited; do NOT write an audit line here — logging every throttled request is
+      // the disk-exhaustion amplifier (SEC H2). The throttle itself is the defense.
       return res.status(429).json({ success: false, error: "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo." });
     }
 
     if (username === appConfig.adminUser && verifyPassword(password || "", appConfig.adminPasswordHash)) {
       clearAuthFailures(ipKey);
-      auditEvent("login_success", { ip: ipKey, username: String(username ?? "") });
+      auditEvent("login_success", { ip: ipKey, username: String(username ?? "").slice(0, 128) });
       // SEC M2: warn the UI when the live credentials are a known weak default so it can prompt a change.
       // SEC I1: cache the result on appConfig so /api/me can return it without re-running scryptSync.
       const passwordIsDefault = isDefaultCredential(username, password || "");
@@ -829,7 +835,7 @@ async function startServer() {
     }
 
     recordAuthFailure(ipKey);
-    auditEvent("login_failure", { ip: ipKey, username: String(username ?? "") });
+    auditEvent("login_failure", { ip: ipKey, username: String(username ?? "").slice(0, 128) });
     res.status(401).json({ success: false, error: "Credenciales de administrador inválidas." });
   });
 
@@ -3101,11 +3107,18 @@ http {
   // other process files; the static-deny middleware already blocks the project root from the SPA.
   const STATE_DIR = path.join(process.cwd(), "logs");
   const DEPLOY_AUDIT_FILE = path.join(STATE_DIR, "deploy-audit.jsonl");
+  const AUDIT_MAX_BYTES = 10 * 1024 * 1024; // SEC H2: rotate at 10 MB → bounded to ~20 MB (+ one .1)
+  // Append one JSONL record, rotating to a single .1 backup at AUDIT_MAX_BYTES so even an
+  // unauthenticated flood of events (e.g. /api/login) can't exhaust the disk and wedge atomic state
+  // writes / nginx deploys (SEC H2). Best-effort: never throws into a request path.
+  function appendAuditJsonl(file: string, obj: Record<string, unknown>) {
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+    try { if (fs.statSync(file).size > AUDIT_MAX_BYTES) fs.renameSync(file, `${file}.1`); } catch { /* no file yet / rotate best-effort */ }
+    fs.appendFileSync(file, JSON.stringify({ ts: new Date().toISOString(), ...obj }) + "\n", { encoding: "utf-8", mode: 0o600 });
+  }
   function auditDeploy(entry: { actor: string; ip: string; mode: string; result: string; detail?: string }) {
     try {
-      fs.mkdirSync(STATE_DIR, { recursive: true });
-      const line = JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n";
-      fs.appendFileSync(DEPLOY_AUDIT_FILE, line, { encoding: "utf-8", mode: 0o600 });
+      appendAuditJsonl(DEPLOY_AUDIT_FILE, entry);
     } catch (err: any) {
       console.warn("Nginx Flow Manager: no se pudo escribir la línea de auditoría de deploy:", err?.message || err);
     }
@@ -3116,9 +3129,7 @@ http {
   const SECURITY_AUDIT_FILE = path.join(STATE_DIR, "security-audit.jsonl");
   function auditEvent(event: string, entry: Record<string, unknown>) {
     try {
-      fs.mkdirSync(STATE_DIR, { recursive: true });
-      const line = JSON.stringify({ ts: new Date().toISOString(), event, ...entry }) + "\n";
-      fs.appendFileSync(SECURITY_AUDIT_FILE, line, { encoding: "utf-8", mode: 0o600 });
+      appendAuditJsonl(SECURITY_AUDIT_FILE, { event, ...entry });
     } catch (err: any) {
       console.warn("Nginx Flow Manager: no se pudo escribir la línea de auditoría de seguridad:", err?.message || err);
     }
@@ -3678,10 +3689,11 @@ http {
   // /api/tls-cert (hot-swapped with httpsServer.setSecureContext, no restart needed).
   const { key, cert } = await loadTlsMaterial();
   httpsServer = https.createServer({ key, cert }, app);
-  // SEC C1: binds 0.0.0.0 by default for container/remote-access scenarios. When the host is not
-  // otherwise network-isolated, set NFM_HOST=127.0.0.1 and front the panel with a reverse proxy so
-  // it is not directly exposed on every interface.
-  const BIND_HOST = process.env.NFM_HOST || "0.0.0.0";
+  // SEC C1/M1: bind loopback-only by DEFAULT so a fresh/un-set-up panel (and the post-reinstall
+  // window) is never exposed on every interface out of the box. Container/remote-access scenarios
+  // opt in explicitly via NFM_HOST=0.0.0.0 (the Docker image/compose set it) and should still front
+  // the panel with a reverse proxy when the host isn't network-isolated.
+  const BIND_HOST = process.env.NFM_HOST || "127.0.0.1";
   httpsServer.listen(PORT, BIND_HOST, () => {
     console.log(`Server running on https://localhost:${PORT} (bound to ${BIND_HOST})`);
   });
