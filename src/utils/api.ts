@@ -30,5 +30,15 @@ export async function secureFetch(input: RequestInfo | URL, init?: RequestInit):
     window.dispatchEvent(new Event("nginx-flow-unauthorized"));
   }
 
+  // RBAC: a 403 means the session is valid but the user's role isn't allowed this action. Surface
+  // the server's reason so the UI can show a friendly toast instead of a silent failure.
+  if (res.status === 403) {
+    try {
+      const data = await res.clone().json().catch(() => null);
+      const msg = (data && (data as { error?: string }).error) || "Permiso insuficiente para esta acción.";
+      window.dispatchEvent(new CustomEvent("nginx-flow-forbidden", { detail: msg }));
+    } catch { /* non-JSON 403 — ignore */ }
+  }
+
   return res;
 }

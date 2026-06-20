@@ -18,7 +18,9 @@ import { CertManager } from './components/CertManager';
 import { AgentPanel } from './components/AgentPanel';
 import { TlsManager } from './components/TlsManager';
 import { CommitModal } from './components/CommitModal';
+import { UserManager } from './components/UserManager';
 import { secureFetch } from './utils/api';
+import { roleLevel, type NfmRole } from './utils/rbac';
 
 import { 
   Network, 
@@ -42,22 +44,29 @@ import {
   GitCommit,
   AlertTriangle,
   Cpu,
-  Lock
+  Lock,
+  Users,
+  Eye
 } from 'lucide-react';
 
 interface DashboardGridProps {
   onLogout: () => void;
   adminUser: string | null;
+  role: NfmRole;
   offlineMode: boolean;
 }
 
-function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps) {
+function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGridProps) {
   const { state, activeSiteId, setActiveSiteId, runningState, hasChanges, confirmDialog, closeConfirmation, isInitialImporting, initialImportPhase } = useTopology();
+
+  const isAdmin = role === 'admin';
+  const isViewer = roleLevel(role) < 2; // viewer: read-only
 
   const [certOpen, setCertOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [tlsOpen, setTlsOpen] = useState(false);
   const [commitOpen, setCommitOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
 
   // Real agent/daemon connection status for the header badge (polled, not the old hardcoded label).
   const [agentStatus, setAgentStatus] = useState<'loading' | 'connected' | 'unreachable' | 'absent'>('loading');
@@ -204,6 +213,7 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
       <AgentPanel open={agentOpen} onClose={() => setAgentOpen(false)} />
       <TlsManager open={tlsOpen} onClose={() => setTlsOpen(false)} />
       <CommitModal isOpen={commitOpen} onClose={() => setCommitOpen(false)} />
+      <UserManager open={usersOpen} onClose={() => setUsersOpen(false)} currentUsername={adminUser} />
 
 
       {/* 1. Main Header */}
@@ -357,11 +367,23 @@ function DashboardGrid({ onLogout, adminUser, offlineMode }: DashboardGridProps)
               <span className="hidden 2xl:inline">HTTPS</span>
             </button>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs text-emerald-400 font-mono">
-              <ShieldCheck size={13} className="text-[#009639]" />
-              <span>{adminUser || 'Admin'}</span>
+            {isAdmin && (
+              <button
+                onClick={() => setUsersOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-emerald-500/15 rounded border border-white/10 hover:border-emerald-500/30 text-xs text-slate-300 hover:text-emerald-300 font-mono transition-all cursor-pointer shrink-0"
+                title="Gestión de usuarios y roles"
+              >
+                <Users size={13} className="text-emerald-400" />
+                <span className="hidden 2xl:inline">Usuarios</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs font-mono shrink-0" title={`Rol: ${role}`}>
+              {isViewer ? <Eye size={13} className="text-sky-400" /> : <ShieldCheck size={13} className="text-[#009639]" />}
+              <span className="text-slate-200">{adminUser || 'Usuario'}</span>
+              <span className={`text-[9px] uppercase font-bold ${role === 'admin' ? 'text-rose-300' : role === 'operator' ? 'text-emerald-300' : 'text-sky-300'}`}>{role}</span>
             </div>
-            
+
             <button
               onClick={onLogout}
               className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-white rounded border border-rose-500/20 transition-all text-xs font-bold uppercase font-mono shrink-0 cursor-pointer"
@@ -584,18 +606,28 @@ function AppContent() {
   // display hint, refreshed from /api/me.
   const [authed, setAuthed] = useState<boolean>(false);
   const [adminUser, setAdminUser] = useState<string | null>(() => localStorage.getItem('nginx_flow_admin_user'));
+  const [role, setRole] = useState<NfmRole>('viewer');
   const [offlineMode, setOfflineMode] = useState<boolean>(() => localStorage.getItem('nginx_flow_offline_mode') === 'true');
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [forbiddenMsg, setForbiddenMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const handleUnauthorized = () => {
       // SEC cookie-auth: session no longer valid server-side; clear the display hint and gate out.
       setAuthed(false);
       setAdminUser(null);
+      setRole('viewer');
       localStorage.removeItem('nginx_flow_admin_user');
+    };
+    // RBAC: a 403 (valid session, insufficient role) → show a transient toast, don't log out.
+    const handleForbidden = (e: Event) => {
+      const msg = (e as CustomEvent<string>).detail || 'Permiso insuficiente para esta acción.';
+      setForbiddenMsg(msg);
+      window.setTimeout(() => setForbiddenMsg((cur) => (cur === msg ? null : cur)), 5000);
     };
 
     window.addEventListener('nginx-flow-unauthorized', handleUnauthorized);
+    window.addEventListener('nginx-flow-forbidden', handleForbidden);
 
     // SEC cookie-auth: ask the server whether the cookie session is valid (200 => authed,
     // 401 => show login). The token cookie is HttpOnly so we cannot inspect it from JS.
@@ -608,6 +640,7 @@ function AppContent() {
         if (data.success) {
           setAuthed(true);
           setAdminUser(data.adminUser);
+          setRole((data.role as NfmRole) || 'viewer');
           localStorage.setItem('nginx_flow_admin_user', data.adminUser);
           const om = !!data.offlineMode;
           setOfflineMode(om);
@@ -625,6 +658,7 @@ function AppContent() {
 
     return () => {
       window.removeEventListener('nginx-flow-unauthorized', handleUnauthorized);
+      window.removeEventListener('nginx-flow-forbidden', handleForbidden);
     };
   }, []);
 
@@ -636,6 +670,7 @@ function AppContent() {
     localStorage.setItem('nginx_flow_offline_mode', String(om));
     setAuthed(true);
     setAdminUser(newAdmin);
+    setRole('admin'); // setup creates the first admin
     setOfflineMode(om);
   };
 
@@ -685,8 +720,15 @@ function AppContent() {
   return (
     <ReactFlowProvider>
       <TopologyProvider offlineMode={offlineMode}>
-        <DashboardGrid onLogout={handleLogout} adminUser={adminUser} offlineMode={offlineMode} />
+        <DashboardGrid onLogout={handleLogout} adminUser={adminUser} role={role} offlineMode={offlineMode} />
       </TopologyProvider>
+      {forbiddenMsg && (
+        <div className="fixed bottom-4 right-4 z-[100000] max-w-sm flex items-start gap-2 bg-rose-600/95 text-white text-xs font-mono px-3 py-2.5 rounded-lg shadow-2xl border border-rose-400/30">
+          <Lock size={14} className="shrink-0 mt-0.5" />
+          <span>{forbiddenMsg}</span>
+          <button onClick={() => setForbiddenMsg(null)} className="ml-1 text-white/70 hover:text-white cursor-pointer" aria-label="cerrar">×</button>
+        </div>
+      )}
     </ReactFlowProvider>
   );
 }
