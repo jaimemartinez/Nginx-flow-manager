@@ -21,6 +21,7 @@ import { tokenizeNginx, parseNginxAST, NginxASTNode, NginxDirective } from "./sr
 import { parseNginxConfig } from "./src/utils/nginxImport";
 import { HTPASSWD_DIR, orphanHtpasswdFiles } from "./src/utils/nginxCompiler";
 import { confinePosixPath, confineNginxPath as confineNginxPathUnder } from "./src/utils/pathConfine";
+import { migrateWorkspaceState, CURRENT_SCHEMA_VERSION, isStateWriteConflict } from "./src/utils/stateMigrate";
 // FIX #1: secrets-at-rest. encrypt/decrypt SSH password, SSH key, agent privateKey + secret at the
 // load/save boundary. decryptSecret() passes plaintext through, so existing configs keep working.
 import { encryptSecret, decryptSecret, isEncrypted } from "./src/utils/secretStore";
@@ -502,6 +503,16 @@ async function startServer() {
   };
 
   // Administration security middleware
+  // Liveness/readiness probes for orchestrators (Docker/k8s) and uptime monitoring. Registered
+  // before the auth middleware and outside /api so a monitor never needs a session; they expose no
+  // sensitive data (just uptime + whether first-run setup is done).
+  app.get("/healthz", (_req, res) => {
+    res.json({ status: "ok", uptime: Math.round(process.uptime()) });
+  });
+  app.get("/readyz", (_req, res) => {
+    res.json({ status: "ready", setupCompleted: !!appConfig.setupCompleted, mode: appConfig.remoteMode ? "remote" : "local" });
+  });
+
   app.use((req, res, next) => {
     // If request doesn't start with /api, let it pass to Vite/static server
     if (!req.path.startsWith("/api")) {
@@ -1098,7 +1109,9 @@ async function startServer() {
     // file (e.g. a crash mid-write before the atomic rename landed) instead of returning a 500.
     const readState = (file: string) => {
       const parsed = JSON.parse(fs.readFileSync(file, "utf-8"));
-      return { state: parsed.state ?? null, updatedAt: parsed.updatedAt ?? null };
+      // Forward-migrate older on-disk formats to the current schema before serving them.
+      const m = migrateWorkspaceState(parsed);
+      return { state: m.state, updatedAt: parsed.updatedAt ?? null, schemaVersion: m.schemaVersion };
     };
     try {
       if (!fs.existsSync(WORKSPACE_STATE_FILE)) {
@@ -1131,14 +1144,14 @@ async function startServer() {
       if (typeof expectedUpdatedAt === "string" && fs.existsSync(WORKSPACE_STATE_FILE)) {
         try {
           const current = JSON.parse(fs.readFileSync(WORKSPACE_STATE_FILE, "utf-8"));
-          if (current?.updatedAt && current.updatedAt !== expectedUpdatedAt) {
+          if (isStateWriteConflict(expectedUpdatedAt, current?.updatedAt)) {
             return res.status(409).json({ success: false, error: "El estado del workspace cambió desde la última lectura.", updatedAt: current.updatedAt });
           }
         } catch { /* unreadable/corrupt current state → fall through and overwrite */ }
       }
 
       const updatedAt = new Date().toISOString();
-      const payload = JSON.stringify({ updatedAt, state }, null, 2);
+      const payload = JSON.stringify({ schemaVersion: CURRENT_SCHEMA_VERSION, updatedAt, state }, null, 2);
 
       // FIX #8: atomic write. A bare writeFileSync truncates-then-writes the live file, so a crash
       // mid-write (or a concurrent reader) can observe a half-written / empty workspace-state.json.

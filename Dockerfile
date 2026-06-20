@@ -48,6 +48,6 @@ EXPOSE 3000
 
 # The panel is HTTPS-only with a self-signed cert on first boot, so the probe skips verification.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
-  CMD node -e "require('https').get({host:'127.0.0.1',port:process.env.NFM_PORT||3000,rejectUnauthorized:false,timeout:4000},r=>process.exit(r.statusCode&&r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+  CMD node -e "require('https').get({host:'127.0.0.1',port:process.env.NFM_PORT||3000,path:'/healthz',rejectUnauthorized:false,timeout:4000},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
