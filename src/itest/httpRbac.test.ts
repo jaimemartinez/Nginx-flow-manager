@@ -17,7 +17,8 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { buildSync } from 'esbuild';
 
 const REPO = path.resolve(__dirname, '..', '..');
 const PORT = 40000 + Math.floor(Math.random() * 9000);
@@ -69,12 +70,13 @@ let tmp = '';
 
 beforeAll(async () => {
   // 1. Build the server bundle so we can run it under `node` with an isolated CWD (a built .cjs at
-  //    <repo>/dist resolves node_modules from <repo> while CWD points at the temp data dir).
-  execFileSync(process.execPath, [
-    path.join(REPO, 'node_modules', 'esbuild', 'bin', 'esbuild'),
-    'server.ts', '--bundle', '--platform=node', '--format=cjs', '--packages=external',
-    '--outfile=dist/server.cjs',
-  ], { cwd: REPO, stdio: 'ignore' });
+  //    <repo>/dist resolves node_modules from <repo> while CWD points at the temp data dir). Use the
+  //    esbuild JS API (as agent/build.ts does) — robust across platforms vs invoking the CLI binary.
+  buildSync({
+    entryPoints: [path.join(REPO, 'server.ts')],
+    bundle: true, platform: 'node', format: 'cjs', packages: 'external', logLevel: 'silent',
+    outfile: path.join(REPO, 'dist', 'server.cjs'), absWorkingDir: REPO,
+  });
 
   // 2. Seed an isolated working dir with a completed-setup config + three users.
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nfm-itest-'));
