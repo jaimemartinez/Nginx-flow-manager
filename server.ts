@@ -22,6 +22,7 @@ import { parseNginxConfig } from "./src/utils/nginxImport";
 import { HTPASSWD_DIR, orphanHtpasswdFiles } from "./src/utils/nginxCompiler";
 import { confinePosixPath, confineNginxPath as confineNginxPathUnder } from "./src/utils/pathConfine";
 import { migrateWorkspaceState, CURRENT_SCHEMA_VERSION, isStateWriteConflict } from "./src/utils/stateMigrate";
+import { NfmUser, NfmRole, authorize, ensureUsers, isValidRole, isValidUsername, wouldRemoveLastAdmin } from "./src/utils/rbac";
 // FIX #1: secrets-at-rest. encrypt/decrypt SSH password, SSH key, agent privateKey + secret at the
 // load/save boundary. decryptSecret() passes plaintext through, so existing configs keep working.
 import { encryptSecret, decryptSecret, isEncrypted, hardenSecretFileWindows } from "./src/utils/secretStore";
@@ -64,8 +65,12 @@ async function startServer() {
     remoteSshKey: string;
     nginxPath: string;
     nginxBinary: string;
+    // Legacy single-admin fields. After migration `users` is the source of truth for auth; these are
+    // kept as a mirror of the primary admin for backward-compatible display / older code paths.
     adminUser: string;
     adminPasswordHash: string;
+    // RBAC: the full user list (admin/operator/viewer). Seeded from the legacy admin on first load.
+    users: NfmUser[];
     // SEC I1: cached "credential is a known weak default" flag. Computed at setup/login (and cleared
     // on reinstall) so /api/me can return it without running scryptSync (verifyPassword) per request.
     credentialIsWeak?: boolean;
@@ -96,6 +101,7 @@ async function startServer() {
       nginxBinary: "/usr/sbin/nginx",
       adminUser: "",
       adminPasswordHash: "",
+      users: [],
       credentialIsWeak: false, // SEC I1
       tlsSource: 'self-signed',
       tlsCertPath: "",
@@ -109,6 +115,12 @@ async function startServer() {
       if (fs.existsSync(CONFIG_FILE)) {
         const data = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
         const cfg = { ...defaults, ...data };
+        // RBAC migration: a pre-multi-user install has adminUser/adminPasswordHash but no `users`.
+        // Seed `users` with that admin so the upgrade is transparent (it becomes the first admin).
+        cfg.users = ensureUsers({
+          users: cfg.users, adminUser: cfg.adminUser, adminPasswordHash: cfg.adminPasswordHash,
+          id: crypto.randomBytes(8).toString("hex"), now: new Date().toISOString(),
+        });
         // FIX #1: decrypt secrets at the LOAD boundary so the rest of the code sees plaintext (the
         // in-memory shape is unchanged). decryptSecret() passes plaintext through, so an existing
         // un-encrypted app-config.json keeps loading fine and is migrated to ciphertext on next save.
@@ -336,7 +348,11 @@ async function startServer() {
   // SEC L1: absolute session lifetime cap. Once a token is this old it is rejected even if the
   // sliding idle TTL is still fresh, forcing periodic re-authentication.
   const SESSION_ABSOLUTE_MAX_MS = 24 * 60 * 60 * 1000;
-  const activeSessions = new Map<string, { exp: number; created: number }>();
+  // RBAC: a session is bound to the user that created it (id/name/role) so authorization and the
+  // audit actor come from the live session, not a global admin. `weak` caches the known-weak-default
+  // check from login so /api/me can nudge a password change without re-running scrypt per request.
+  type SessionRec = { exp: number; created: number; userId: string; username: string; role: NfmRole; weak: boolean };
+  const activeSessions = new Map<string, SessionRec>();
   // SEC B: hard cap so a flood of logins/tickets can't grow these maps without bound.
   const MAX_SESSIONS = 1000;
   // SEC B/L1: prune the session map, which stores { exp, created } values. Evict expired entries
@@ -351,22 +367,27 @@ async function startServer() {
       for (let i = 0; i < sorted.length && activeSessions.size > max; i++) activeSessions.delete(sorted[i][0]);
     }
   }
-  function createSession(): string {
+  function createSession(user: { id: string; username: string; role: NfmRole; weak: boolean }): string {
     const token = crypto.randomBytes(32).toString("hex");
     pruneSessions(MAX_SESSIONS - 1); // SEC B: bound the map before inserting
     const now = Date.now();
-    activeSessions.set(token, { exp: now + SESSION_TTL_MS, created: now }); // SEC L1
+    activeSessions.set(token, { exp: now + SESSION_TTL_MS, created: now, userId: user.id, username: user.username, role: user.role, weak: user.weak }); // SEC L1
     return token;
   }
-  function isSessionValid(token?: string | null): boolean {
-    if (!token) return false;
+  // Return the live session record (with sliding renewal applied) or null if missing/expired. The
+  // single place session validity is decided; isSessionValid()/sessionRole()/sessionUser() build on it.
+  function getSession(token?: string | null): SessionRec | null {
+    if (!token) return null;
     const rec = activeSessions.get(token);
-    if (!rec) return false;
+    if (!rec) return null;
     const now = Date.now();
     // SEC L1: reject once the absolute lifetime cap is exceeded, regardless of sliding renewal.
-    if (rec.exp < now || now - rec.created >= SESSION_ABSOLUTE_MAX_MS) { activeSessions.delete(token); return false; }
+    if (rec.exp < now || now - rec.created >= SESSION_ABSOLUTE_MAX_MS) { activeSessions.delete(token); return null; }
     rec.exp = now + SESSION_TTL_MS; // sliding renewal (idle TTL); `created` is preserved
-    return true;
+    return rec;
+  }
+  function isSessionValid(token?: string | null): boolean {
+    return getSession(token) !== null;
   }
 
   // Brute-force throttle for the credential endpoints (login / reinstall), keyed by client IP.
@@ -538,11 +559,15 @@ async function startServer() {
       return next();
     }
 
-    // Setup-phase: allowed only pre-setup, or to an authenticated admin afterwards.
+    // Setup-phase: open pre-setup (wizard). Post-setup these are SSRF/FS-probe / system actions, so
+    // they require an authenticated ADMIN (RBAC classifies them admin-only).
     if (setupPhaseEndpoints.includes(req.path)) {
-      // SEC cookie-auth: session token now comes from the nfm_session cookie, not a bearer header.
-      if (!appConfig.setupCompleted || isSessionValid(sessionToken(req))) return next();
-      return res.status(401).json({ success: false, error: "Unauthorized." });
+      if (!appConfig.setupCompleted) return next();
+      const sess = getSession(sessionToken(req));
+      if (!sess) return res.status(401).json({ success: false, error: "Unauthorized." });
+      const dec = authorize(sess.role, method, req.path);
+      if (!dec.allowed) return res.status(403).json({ success: false, error: `Permiso insuficiente: requiere rol "${dec.requiredRole}".`, requiredRole: dec.requiredRole });
+      return next();
     }
 
     // SSE log stream: EventSource can't send Authorization headers, so it authenticates via a
@@ -556,8 +581,15 @@ async function startServer() {
     }
 
     // SEC cookie-auth: authenticate via the HttpOnly nfm_session cookie instead of a bearer header.
-    if (!isSessionValid(sessionToken(req))) {
+    const sess = getSession(sessionToken(req));
+    if (!sess) {
       return res.status(401).json({ success: false, error: "Unauthorized. Por favor, inicie sesión." });
+    }
+    // RBAC: one central authorization decision (src/utils/rbac.ts). Reads → any authenticated role;
+    // writes → operator+; system/security/agent-lifecycle/user-management → admin. Deny-by-default.
+    const dec = authorize(sess.role, method, req.path);
+    if (!dec.allowed) {
+      return res.status(403).json({ success: false, error: `Permiso insuficiente: esta acción requiere el rol "${dec.requiredRole}".`, requiredRole: dec.requiredRole });
     }
 
     next();
@@ -767,7 +799,11 @@ async function startServer() {
     appConfig.nginxPath = finalNginxPath;
     appConfig.nginxBinary = finalNginxBinary;
     appConfig.adminUser = adminUser;
-    appConfig.adminPasswordHash = makePasswordHash(adminPassword);
+    const setupAdminHash = makePasswordHash(adminPassword);
+    appConfig.adminPasswordHash = setupAdminHash;
+    // RBAC: the setup admin is the first user (role admin) and the source of truth for auth.
+    const firstAdmin: NfmUser = { id: crypto.randomBytes(8).toString("hex"), username: adminUser, passwordHash: setupAdminHash, role: "admin", createdAt: new Date().toISOString() };
+    appConfig.users = [firstAdmin];
     // SEC I1: setup already rejected weak defaults (len<8 / admin123 / password===username) above, so
     // the cached weak flag is false here. /api/me reads this instead of re-running scryptSync.
     appConfig.credentialIsWeak = false;
@@ -780,7 +816,7 @@ async function startServer() {
     NGINX_BINARY = finalNginxBinary;
 
     // Issue key
-    const token = createSession();
+    const token = createSession({ id: firstAdmin.id, username: firstAdmin.username, role: "admin", weak: false });
     // SEC cookie-auth: auto-login after setup — the HttpOnly session cookie IS the credential; the
     // token is never returned to the client (no client-side token storage).
     setSessionCookie(res, token);
@@ -810,51 +846,118 @@ async function startServer() {
       return res.status(429).json({ success: false, error: "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo." });
     }
 
-    if (username === appConfig.adminUser && verifyPassword(password || "", appConfig.adminPasswordHash)) {
+    // RBAC: authenticate against the user list (any role). Constant-ish: verifyPassword always runs
+    // for a found user; an unknown username falls through to the failure path.
+    const user = (appConfig.users || []).find((u) => u.username === username);
+    if (user && verifyPassword(password || "", user.passwordHash)) {
       clearAuthFailures(ipKey);
-      auditEvent("login_success", { ip: ipKey, username: String(username ?? "").slice(0, 128) });
-      // SEC M2: warn the UI when the live credentials are a known weak default so it can prompt a change.
-      // SEC I1: cache the result on appConfig so /api/me can return it without re-running scryptSync.
-      const passwordIsDefault = isDefaultCredential(username, password || "");
-      const weakChanged = appConfig.credentialIsWeak !== passwordIsDefault;
-      appConfig.credentialIsWeak = passwordIsDefault;
+      auditEvent("login_success", { ip: ipKey, username: user.username.slice(0, 128), role: user.role });
+      // SEC M2: flag a known weak-default credential so the UI can prompt a change (per user, cached
+      // on the session for /api/me — no per-request scrypt).
+      const passwordIsDefault = isDefaultCredential(user.username, password || "");
       // Transparently upgrade a legacy unsalted SHA-256 hash to salted scrypt on successful login.
-      const legacy = isLegacyHash(appConfig.adminPasswordHash);
-      if (legacy) {
-        appConfig.adminPasswordHash = makePasswordHash(password || "");
+      if (isLegacyHash(user.passwordHash)) {
+        user.passwordHash = makePasswordHash(password || "");
+        if (appConfig.adminUser === user.username) appConfig.adminPasswordHash = user.passwordHash; // keep legacy mirror
+        saveConfig(appConfig);
       }
-      if (legacy || weakChanged) saveConfig(appConfig); // SEC I1: persist the cached flag/rehash once
-      const token = createSession();
+      const token = createSession({ id: user.id, username: user.username, role: user.role, weak: passwordIsDefault });
       // SEC cookie-auth: the HttpOnly session cookie IS the credential; the token is never returned
       // to the client (prevents any client-side token storage / leakage).
       setSessionCookie(res, token);
       return res.json({
         success: true,
-        adminUser: appConfig.adminUser,
+        username: user.username,
+        adminUser: user.username, // legacy alias for older clients
+        role: user.role,
         passwordIsDefault,
       });
     }
 
     recordAuthFailure(ipKey);
     auditEvent("login_failure", { ip: ipKey, username: String(username ?? "").slice(0, 128) });
-    res.status(401).json({ success: false, error: "Credenciales de administrador inválidas." });
+    res.status(401).json({ success: false, error: "Credenciales inválidas." });
   });
 
-  // Admin session check endpoint
+  // Session check endpoint — returns the CURRENT user (from the session) and their role so the UI
+  // can show who's logged in and gate features. weak-default flag is cached on the session at login.
   app.get("/api/me", (req, res) => {
-    // SEC I1: return the weak-default flag cached at login/setup instead of running 2× scryptSync
-    // (verifyPassword) on every request. The flag is kept correct at setup (false), login (recomputed
-    // from the supplied plaintext), and reinstall (cleared), so the UI keeps nudging the admin to
-    // change a known weak default without the per-request key-stretch cost.
+    const sess = getSession(sessionToken(req));
     res.json({
       success: true,
-      adminUser: appConfig.adminUser,
+      username: sess?.username || "",
+      adminUser: sess?.username || "", // legacy alias for older clients
+      role: sess?.role || "viewer",
       nginxPath: NGINX_DIR,
       offlineMode: appConfig.offlineMode || false,
       remoteMode: appConfig.remoteMode || false,
       remoteHost: appConfig.remoteHost || '',
-      passwordIsDefault: appConfig.credentialIsWeak || false,
+      passwordIsDefault: !!sess?.weak,
     });
+  });
+
+  // ── RBAC: user management. Admin-only — the auth middleware already gates /api/users* to admins. ──
+  const publicUser = (u: NfmUser) => ({ id: u.id, username: u.username, role: u.role, createdAt: u.createdAt });
+  function validateNewPassword(username: string, password: string): string | null {
+    if (!password || password.length < 8) return "La contraseña debe tener al menos 8 caracteres.";
+    if (password === username || password === "admin123") return "Contraseña demasiado débil (no uses el nombre de usuario ni un valor por defecto).";
+    return null;
+  }
+
+  app.get("/api/users", (_req, res) => {
+    res.json({ success: true, users: (appConfig.users || []).map(publicUser) });
+  });
+
+  app.post("/api/users", (req, res) => {
+    const { username, password, role } = req.body || {};
+    if (!isValidUsername(username)) return res.status(400).json({ success: false, error: "Usuario inválido (1-64: letras, números, . _ @ -)." });
+    if (!isValidRole(role)) return res.status(400).json({ success: false, error: "Rol inválido." });
+    if ((appConfig.users || []).some((u) => u.username === username)) return res.status(409).json({ success: false, error: "Ese usuario ya existe." });
+    const pwErr = validateNewPassword(username, String(password || ""));
+    if (pwErr) return res.status(400).json({ success: false, error: pwErr });
+    const u: NfmUser = { id: crypto.randomBytes(8).toString("hex"), username, passwordHash: makePasswordHash(String(password)), role, createdAt: new Date().toISOString() };
+    appConfig.users = [...(appConfig.users || []), u];
+    saveConfig(appConfig);
+    auditEvent("user_create", { actor: getSession(sessionToken(req))?.username || "", username, role });
+    res.json({ success: true, user: publicUser(u) });
+  });
+
+  app.put("/api/users/:id", (req, res) => {
+    const { id } = req.params;
+    const { role, password } = req.body || {};
+    const users = appConfig.users || [];
+    const u = users.find((x) => x.id === id);
+    if (!u) return res.status(404).json({ success: false, error: "Usuario no encontrado." });
+    if (role !== undefined) {
+      if (!isValidRole(role)) return res.status(400).json({ success: false, error: "Rol inválido." });
+      if (wouldRemoveLastAdmin(users, id, role)) return res.status(409).json({ success: false, error: "No puedes degradar al único administrador." });
+      u.role = role;
+      // Apply the role change to that user's LIVE sessions so it takes effect without re-login.
+      for (const s of activeSessions.values()) if (s.userId === id) s.role = role;
+    }
+    if (password !== undefined) {
+      const pwErr = validateNewPassword(u.username, String(password || ""));
+      if (pwErr) return res.status(400).json({ success: false, error: pwErr });
+      u.passwordHash = makePasswordHash(String(password));
+      if (appConfig.adminUser === u.username) appConfig.adminPasswordHash = u.passwordHash; // legacy mirror
+    }
+    saveConfig(appConfig);
+    auditEvent("user_update", { actor: getSession(sessionToken(req))?.username || "", username: u.username, role: u.role, passwordChanged: password !== undefined });
+    res.json({ success: true, user: publicUser(u) });
+  });
+
+  app.delete("/api/users/:id", (req, res) => {
+    const { id } = req.params;
+    const users = appConfig.users || [];
+    const u = users.find((x) => x.id === id);
+    if (!u) return res.status(404).json({ success: false, error: "Usuario no encontrado." });
+    if (wouldRemoveLastAdmin(users, id)) return res.status(409).json({ success: false, error: "No puedes eliminar al único administrador." });
+    appConfig.users = users.filter((x) => x.id !== id);
+    saveConfig(appConfig);
+    // Invalidate any live sessions belonging to the deleted user.
+    for (const [tok, s] of activeSessions) if (s.userId === id) activeSessions.delete(tok);
+    auditEvent("user_delete", { actor: getSession(sessionToken(req))?.username || "", username: u.username });
+    res.json({ success: true });
   });
 
   // Test SSH connection endpoint
@@ -908,9 +1011,12 @@ async function startServer() {
       return res.status(429).json({ success: false, error: "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo." });
     }
 
-    if (username !== appConfig.adminUser || !verifyPassword(password || "", appConfig.adminPasswordHash)) {
+    // Reinstall is destructive (wipes config + all users) → require an ADMIN's credentials, not just
+    // an admin session. (The middleware already restricts the route to admins; this re-auth confirms.)
+    const reUser = (appConfig.users || []).find((u) => u.username === username && u.role === "admin");
+    if (!reUser || !verifyPassword(password || "", reUser.passwordHash)) {
       recordAuthFailure(ipKey);
-      return res.status(401).json({ success: false, error: "Credenciales inválidas." });
+      return res.status(401).json({ success: false, error: "Credenciales de administrador inválidas." });
     }
     clearAuthFailures(ipKey);
 
@@ -922,6 +1028,7 @@ async function startServer() {
     appConfig.nginxBinary = "/usr/sbin/nginx";
     appConfig.adminUser = "";
     appConfig.adminPasswordHash = "";
+    appConfig.users = []; // RBAC: wipe all users on reinstall (re-created by the setup wizard)
     appConfig.credentialIsWeak = false; // SEC I1: clear cached weak flag when credentials are reset
     saveConfig(appConfig);
 
@@ -3156,7 +3263,7 @@ http {
     // FIX #7(b)/(c): release the mutex and record the audit outcome on EVERY exit path. We wrap the
     // raw res.json/res.status(...).json so the existing `return res.json(...)` sites need no edits:
     // whatever they send is observed here, the result is audited once, and the mutex is freed.
-    const deployActor = appConfig.adminUser || "desconocido";
+    const deployActor = getSession(sessionToken(req))?.username || appConfig.adminUser || "desconocido";
     const deployIp = clientIp(req);
     const deployMode = appConfig.remoteMode ? "remote" : "local";
     let auditDone = false;
