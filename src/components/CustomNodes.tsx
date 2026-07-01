@@ -1795,6 +1795,36 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                   <option value="off">off (streaming/SSE)</option>
                 </select>
               </div>
+
+              {/* Response caching (proxy_cache) — caches upstream responses in a shared zone. */}
+              <div className="pt-1.5 border-t border-white/5 mt-1.5">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="nodrag accent-[#009639]"
+                    checked={!!data.proxy_cache_enabled}
+                    onChange={(e) => handleChange('proxy_cache_enabled', e.target.checked || undefined)}
+                  />
+                  <span className="text-[10px] text-slate-400 font-mono">Cachear respuestas (proxy_cache)</span>
+                </label>
+                {data.proxy_cache_enabled && (
+                  <div className="pt-1 pl-1">
+                    <span className="block text-[8px] text-slate-500 font-mono leading-none mb-0.5">
+                      proxy_cache_valid (200/302)
+                    </span>
+                    <input
+                      type="text"
+                      className="nodrag w-full bg-[#121214] border border-white/10 rounded px-1 py-0.5 text-slate-300 font-mono text-[9px] focus:outline-none focus:border-[#009639]"
+                      value={data.proxy_cache_valid || ''}
+                      onChange={(e) => handleChange('proxy_cache_valid', e.target.value || undefined)}
+                      placeholder="10m"
+                    />
+                    <span className="text-[8px] text-slate-500 font-mono leading-tight block pt-0.5">
+                      Añade X-Cache-Status (HIT/MISS). Zona keys_zone auto-generada.
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

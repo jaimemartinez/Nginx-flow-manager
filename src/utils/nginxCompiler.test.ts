@@ -440,6 +440,74 @@ describe('compileNginxTopology — auth_basic off (disable inherited auth)', () 
   });
 });
 
+describe('compileNginxTopology — response caching (proxy_cache)', () => {
+  const NGINX_CONF = '/etc/nginx/nginx.conf';
+
+  // raw_config sidecar builder (edges point child -> parent: source = raw, target = location).
+  function rawNode(id: string, content: string): Node<{ label: string; kind: string; content: string }, 'raw_config'> {
+    return { id, type: 'raw_config', position: { x: 0, y: 0 }, data: { label: 'raw', kind: 'directives', content } };
+  }
+
+  it('emits proxy_cache + X-Cache-Status on a proxied location and the shared zone in nginx.conf', () => {
+    const up = upstreamNode('u1', { name: 'backend', servers: [{ id: 's1', address: '10.0.0.5', port: 8080 }] });
+    const loc = locationNode('l1', { path: '/api', actionType: 'proxy_pass', proxy_cache_enabled: true });
+    const server = serverNode('srv1', { server_name: 'app.example.com' });
+    const out = compileNginxTopology(makeState({
+      nodes: [server, loc, up],
+      edges: [{ id: 'e1', source: 'srv1', target: 'l1' }, { id: 'e2', source: 'l1', target: 'u1' }],
+    }));
+
+    const conf = out[SITE_PATH];
+    expect(conf).toContain('proxy_cache nfm_cache;');
+    expect(conf).toContain('proxy_cache_valid 200 302 10m;'); // default validity
+    expect(conf).toContain('proxy_cache_valid 404 1m;');
+    expect(conf).toContain('add_header X-Cache-Status $upstream_cache_status always;');
+    // The keys_zone / on-disk cache path is declared once, at http scope.
+    expect(out[NGINX_CONF]).toContain('proxy_cache_path /var/cache/nginx/nfm_cache levels=1:2 keys_zone=nfm_cache:10m max_size=1g inactive=60m use_temp_path=off;');
+  });
+
+  it('honors a custom proxy_cache_valid', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:9000', proxy_cache_enabled: true, proxy_cache_valid: '1h' });
+    const conf = compileNginxTopology(
+      makeState({ nodes: [serverNode('srv1', {}), loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    )[SITE_PATH];
+    expect(conf).toContain('proxy_cache_valid 200 302 1h;');
+  });
+
+  it('does NOT emit proxy_cache on a non-proxied (static root) location, nor the http zone', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'root', root: '/var/www', proxy_cache_enabled: true });
+    const out = compileNginxTopology(
+      makeState({ nodes: [serverNode('srv1', {}), loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    );
+    expect(out[SITE_PATH]).not.toContain('proxy_cache nfm_cache;');
+    expect(out['/etc/nginx/nginx.conf']).not.toContain('proxy_cache_path');
+  });
+
+  it('does not emit the http zone when no location enables caching', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:9000' });
+    const out = compileNginxTopology(
+      makeState({ nodes: [serverNode('srv1', {}), loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    );
+    expect(out['/etc/nginx/nginx.conf']).not.toContain('proxy_cache_path');
+  });
+
+  it('does NOT duplicate proxy_cache when the imported config already set it (round-trip safe)', () => {
+    const raw = rawNode('r1', 'proxy_cache my_imported_zone;\nproxy_cache_valid 200 5m;');
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:9000', proxy_cache_enabled: true });
+    const server = serverNode('srv1', { server_name: 'app.example.com' });
+    const conf = compileNginxTopology(makeState({
+      nodes: [server, loc, raw],
+      edges: [{ id: 'e1', source: 'srv1', target: 'l1' }, { id: 'e2', source: 'r1', target: 'l1' }],
+    }))[SITE_PATH];
+
+    // The imported directive is preserved; the auto-emitter stands down (exactly one proxy_cache line).
+    const cacheLines = conf.split('\n').filter((l) => /^\s*proxy_cache\b/.test(l));
+    expect(cacheLines.length).toBe(1);
+    expect(conf).toContain('proxy_cache my_imported_zone;');
+    expect(conf).not.toContain('proxy_cache nfm_cache;');
+  });
+});
+
 describe('orphanHtpasswdFiles — deploy cleanup helper', () => {
   const p = (name: string) => `${HTPASSWD_DIR}/${name}`;
 

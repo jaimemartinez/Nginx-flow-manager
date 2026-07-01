@@ -598,6 +598,18 @@ function compileLocationRecursive(
     output += `${innerIndent}proxy_set_header Connection "upgrade";\n`;
   }
 
+  // Response caching — cache upstream responses in the shared http-scope zone `nfm_cache` (its
+  // proxy_cache_path is emitted once in nginx.conf). Proxied locations only; skipped if the imported
+  // config already set proxy_cache (round-trip safe). X-Cache-Status surfaces HIT/MISS to clients.
+  if (lData.proxy_cache_enabled && isProxied && !locCustomHas(/^\s*proxy_cache\b/m)) {
+    const cacheValid = sanitizeToken(lData.proxy_cache_valid || '10m');
+    output += `${innerIndent}# Response cache\n`;
+    output += `${innerIndent}proxy_cache nfm_cache;\n`;
+    output += `${innerIndent}proxy_cache_valid 200 302 ${cacheValid};\n`;
+    output += `${innerIndent}proxy_cache_valid 404 1m;\n`;
+    output += `${innerIndent}add_header X-Cache-Status \$upstream_cache_status always;\n`;
+  }
+
   // Strip the client's Authorization header before proxying — but ONLY when this location both
   // proxies AND sits behind HTTP Basic Auth (its own or inherited from the server). nginx has
   // already validated the Basic credentials by this point, so the backend never needs them; in
@@ -883,6 +895,24 @@ function compileMainNginxConf(global: NginxGlobalConfig, sites?: NginxSiteConfig
     }
     conf += `\n    # Rate Limiting Zone (auto-generated)\n`;
     conf += `    limit_req_zone $binary_remote_addr zone=ip_limit:10m rate=${rate};\n`;
+  }
+
+  // Auto-generate the shared proxy_cache_path (keys_zone `nfm_cache`) if any location will actually
+  // emit `proxy_cache` — i.e. caching is enabled AND the location is proxied (proxy_pass or wired to
+  // an upstream), matching the location-scope `isProxied` guard — and the raw_config doesn't already
+  // define one. A location cached but not proxied emits nothing, so no zone is needed.
+  const locationIsProxied = (site: any, n: any): boolean => {
+    if (n.data?.actionType === 'proxy_pass') return true;
+    return ((site.edges as any[]) || []).some((e: any) =>
+      e.source === n.id && (site.nodes as any[]).some((t: any) => t.id === e.target && t.type === 'upstream'));
+  };
+  const hasProxyCache = (sites || []).some(site =>
+    (site.nodes as any[]).some((n: any) =>
+      n.type === 'location' && n.data?.proxy_cache_enabled && locationIsProxied(site, n))
+  );
+  if (hasProxyCache && !httpRawConfig.includes('proxy_cache_path')) {
+    conf += `\n    # Response cache zone (auto-generated) — used by locations with caching enabled\n`;
+    conf += `    proxy_cache_path /var/cache/nginx/nfm_cache levels=1:2 keys_zone=nfm_cache:10m max_size=1g inactive=60m use_temp_path=off;\n`;
   }
 
   conf += `}\n`;

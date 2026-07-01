@@ -17,7 +17,7 @@ Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. Its 
 - **Diff view & version history** — review changes before deploying; commit topology snapshots with author/message and roll back to any prior version.
 - **Live log tail** — stream `access` and `error` logs over Server-Sent Events.
 - **Live traffic animation** — animate request flow across the canvas edges from parsed log events.
-- **First-class graphical directives** — HTTP/2, HSTS, WebSocket upgrade, `try_files`/`alias`, proxy tuning, `expires` caching, and `allow`/`deny` access control are editable as structured fields, not raw text.
+- **First-class graphical directives** — HTTP/2, HSTS, WebSocket upgrade, `try_files`/`alias`, proxy tuning, `expires` caching, upstream **response caching** (`proxy_cache`), and `allow`/`deny` access control are editable as structured fields, not raw text.
 - **conf.d / snippets editing** — included files outside the topology are kept as `extra_files` and written back verbatim.
 - **Multi-user RBAC** — three roles (admin / operator / viewer) with a single deny-by-default authorization gate: viewers read-only, operators edit + deploy, admins also manage users and system/agent settings. Manage users from the UI; an existing single-admin install is migrated transparently.
 

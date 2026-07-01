@@ -145,6 +145,8 @@ export type LocationNodeData = {
   proxy_send_timeout?: string;    // e.g. '60s'
   proxy_read_timeout?: string;    // e.g. '300s' (long-poll/SSE/websocket)
   proxy_buffering?: 'on' | 'off'; // tri-state: undefined = nginx default (on)
+  proxy_cache_enabled?: boolean; // cache upstream responses (proxy_cache + a shared keys_zone at http scope)
+  proxy_cache_valid?: string;    // how long to cache 200/302 responses, e.g. '10m', '1h' (default '10m')
   expires?: string; // cache expiry for static assets, e.g. '30d', '1h', 'max', 'off'
   return_code: number; // e.g. 301, 302, 404
   return_url: string; // e.g. https://google.com or custom message
