@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps, Node, useNodes, useEdges, useUpdateNodeInternals } from '@xyflow/react';
-import { useTopology } from '../context/TopologyContext';
+import { useTopologyActions } from '../context/TopologyContext';
 import { ServerNodeData, LocationNodeData, UpstreamNodeData, UpstreamServer, NginxHeader, NginxRewriteRule, NginxAccessRule, NginxBasicAuthUser } from '../types';
 import { Server, Route, Network, Plus, Trash2, Shield, ShieldAlert, Settings, HelpCircle, ChevronDown, ChevronUp, Lock, AlertTriangle, Maximize2, X, Eraser } from 'lucide-react';
 import { secureFetch } from '../utils/api';
@@ -1463,7 +1463,7 @@ const SSLCertificateSelector: React.FC<SSLCertificateSelectorProps> = ({
 
 export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = ({ id, data }) => {
   const { t } = useT();
-  const { activeSiteId, updateNodeData, removeNode } = useTopology();
+  const { activeSiteId, updateNodeData, removeNode } = useTopologyActions();
   const [showSSLAdvanced, setShowSSLAdvanced] = useState(false);
   const { sourcePosition } = useDynamicPositions(id);
   const updateNodeInternals = useUpdateNodeInternals();
@@ -1648,7 +1648,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
 
 export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>>> = ({ id, data }) => {
   const { t } = useT();
-  const { activeSiteId, updateNodeData, removeNode } = useTopology();
+  const { activeSiteId, updateNodeData, removeNode } = useTopologyActions();
   const { sourcePosition, targetPosition } = useDynamicPositions(id);
   const updateNodeInternals = useUpdateNodeInternals();
 
@@ -2008,7 +2008,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
 };
 
 export const UpstreamNode: React.FC<NodeProps<Node<UpstreamNodeData, 'upstream'>>> = ({ id, data }) => {
-  const { activeSiteId, updateNodeData, removeNode } = useTopology();
+  const { activeSiteId, updateNodeData, removeNode } = useTopologyActions();
   const { targetPosition } = useDynamicPositions(id);
   const updateNodeInternals = useUpdateNodeInternals();
 
@@ -2153,7 +2153,7 @@ export const UpstreamNode: React.FC<NodeProps<Node<UpstreamNodeData, 'upstream'>
 };
 
 export const GlobalCoreNode: React.FC<NodeProps<Node<any, 'global_core'>>> = ({ id, data }) => {
-  const { updateNodeData } = useTopology();
+  const { updateNodeData } = useTopologyActions();
 
   const handleChange = (field: string, value: any) => {
     updateNodeData('__global__', id, { [field]: value });
@@ -2228,7 +2228,7 @@ export const GlobalCoreNode: React.FC<NodeProps<Node<any, 'global_core'>>> = ({ 
 };
 
 export const GlobalHttpNode: React.FC<NodeProps<Node<any, 'global_http'>>> = ({ id, data }) => {
-  const { updateNodeData } = useTopology();
+  const { updateNodeData } = useTopologyActions();
 
   const handleChange = (field: string, value: any) => {
     updateNodeData('__global__', id, { [field]: value });
@@ -2325,7 +2325,7 @@ export const GlobalHttpNode: React.FC<NodeProps<Node<any, 'global_http'>>> = ({ 
 };
 
 export const GlobalGzipNode: React.FC<NodeProps<Node<any, 'global_gzip'>>> = ({ id, data }) => {
-  const { updateNodeData } = useTopology();
+  const { updateNodeData } = useTopologyActions();
 
   const handleChange = (field: string, value: any) => {
     updateNodeData('__global__', id, { [field]: value });
@@ -2409,7 +2409,7 @@ export const GlobalGzipNode: React.FC<NodeProps<Node<any, 'global_gzip'>>> = ({ 
 };
 
 export const GlobalStreamNode: React.FC<NodeProps<Node<any, 'global_stream'>>> = ({ id, data }) => {
-  const { removeNode, updateNodeData } = useTopology();
+  const { removeNode, updateNodeData } = useTopologyActions();
 
   const handleChange = (field: string, value: any) => {
     updateNodeData('__global__', id, { [field]: value });
@@ -2504,7 +2504,7 @@ export const GlobalStreamNode: React.FC<NodeProps<Node<any, 'global_stream'>>> =
 
 export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> = ({ id, data }) => {
   const { t } = useT();
-  const { activeSiteId, removeNode, updateNodeData } = useTopology();
+  const { activeSiteId, removeNode, updateNodeData } = useTopologyActions();
 
   const handleChange = (field: string, value: any) => {
     updateNodeData(activeSiteId, id, { [field]: value });
@@ -2774,7 +2774,7 @@ const stripComments = (content: string): string =>
 
 export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id, data }) => {
   const { t } = useT();
-  const { activeSiteId, removeNode, updateNodeData } = useTopology();
+  const { activeSiteId, removeNode, updateNodeData } = useTopologyActions();
 
   const handleChange = (field: string, value: any) => {
     updateNodeData(activeSiteId, id, { [field]: value });

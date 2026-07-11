@@ -54,6 +54,15 @@ interface TopologyContextType {
 
 const TopologyContext = createContext<TopologyContextType | undefined>(undefined);
 
+// Stable, state-free slice for canvas node components. React Flow syncs the `nodes` prop into
+// its internal store asynchronously; when node components ALSO subscribed to the full
+// TopologyContext (whose value changes identity on every keystroke), each keystroke re-rendered
+// them synchronously with the store's still-stale data — React re-wrote the input's OLD value
+// into the DOM and the caret jumped to the end. Nodes must subscribe only to this memoized
+// actions-only context (fresh data still reaches them via React Flow's own store sync).
+type TopologyActionsType = Pick<TopologyContextType, 'activeSiteId' | 'updateNodeData' | 'removeNode'>;
+const TopologyActionsContext = createContext<TopologyActionsType | undefined>(undefined);
+
 const initialGlobalConfig: NginxGlobalConfig = {
   worker_processes: 'auto',
   worker_connections: 1024,
@@ -942,7 +951,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
     });
   };
 
-  const removeNode = (siteId: string, nodeId: string) => {
+  const removeNode = React.useCallback((siteId: string, nodeId: string) => {
     if (siteId === '__global__') {
       setState(prev => {
         const globalNodes = prev.global.nodes || [];
@@ -983,9 +992,9 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
         };
       })
     }));
-  };
+  }, []);
 
-  const updateNodeData = (siteId: string, nodeId: string, newData: any) => {
+  const updateNodeData = React.useCallback((siteId: string, nodeId: string, newData: any) => {
     if (siteId === '__global__') {
       setState(prev => {
         const globalNodes = prev.global.nodes || [];
@@ -1079,7 +1088,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
         };
       })
     }));
-  };
+  }, []);
 
   const setNodesAndEdges = (siteId: string, nodes: CustomNginxNode[], edges: Edge[]) => {
     if (siteId === '__global__') {
@@ -1531,7 +1540,14 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
     return !compareTopologies(state, runningState);
   }, [state, runningState, compareTopologies]);
 
+  // Memoized so canvas node components re-render only on site switch — never per keystroke.
+  const nodeActions = React.useMemo(
+    () => ({ activeSiteId, updateNodeData, removeNode }),
+    [activeSiteId, updateNodeData, removeNode]
+  );
+
   return (
+    <TopologyActionsContext.Provider value={nodeActions}>
     <TopologyContext.Provider value={{
       state,
       activeSiteId,
@@ -1570,6 +1586,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
     }}>
       {children}
     </TopologyContext.Provider>
+    </TopologyActionsContext.Provider>
   );
 };
 
@@ -1577,6 +1594,17 @@ export const useTopology = () => {
   const context = useContext(TopologyContext);
   if (!context) {
     throw new Error('useTopology must be used within a TopologyProvider');
+  }
+  return context;
+};
+
+// For canvas node components ONLY — see TopologyActionsContext above. Subscribing a node to the
+// full useTopology() re-renders it on every keystroke with React Flow's stale store data, which
+// resets the caret of the focused input to the end.
+export const useTopologyActions = () => {
+  const context = useContext(TopologyActionsContext);
+  if (!context) {
+    throw new Error('useTopologyActions must be used within a TopologyProvider');
   }
   return context;
 };
