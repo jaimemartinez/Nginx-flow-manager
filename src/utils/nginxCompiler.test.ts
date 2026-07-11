@@ -143,7 +143,7 @@ describe('compileNginxTopology — try_files vs proxy_pass', () => {
       proxy_pass: 'https://10.10.0.2',
       try_files: '$uri $uri/ /index.nginx-debian.html',
     });
-    const server = serverNode('srv1', { server_name: 'iglesiabaq.org', listen: 443, ssl: true });
+    const server = serverNode('srv1', { server_name: 'app.example.org', listen: 443, ssl: true });
     const out = compileNginxTopology(
       makeState({ nodes: [server, loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
     );
