@@ -480,7 +480,7 @@ export const NginxCanvas: React.FC = () => {
     <div className="flex-1 flex flex-col h-full bg-[#0A0A0B] relative border-l border-r border-white/10">
       
       {/* Canvas Header / Action Bar */}
-      <div className="bg-[#0A0A0B] border-b border-white/10 px-4 py-2.5 flex items-center justify-between z-10">
+      <div className="bg-[#0A0A0B] border-b border-white/10 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 z-10">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]"></span>
           <span className="font-mono text-xs text-slate-400 truncate">
@@ -493,7 +493,7 @@ export const NginxCanvas: React.FC = () => {
         </div>
 
         {/* Floating Tool Blocks */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isGlobal ? (
             <>
               {/* Add New Stream Proxy rule */}
@@ -656,6 +656,27 @@ export const NginxCanvas: React.FC = () => {
             position="bottom-right"
           />
         </ReactFlow>
+
+        {/* First-run guidance: an empty selected site has no visible affordance to create the first
+            node (the sidebar help card can be collapsed away). This CTA overlay shows only while the
+            canvas is empty; pointer-events stay on the card so canvas panning still works around it. */}
+        {!isGlobal && activeSiteId && nodes.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4 z-40">
+            <div className="pointer-events-auto bg-[#121214]/95 border border-white/10 rounded-xl p-6 max-w-xs shadow-2xl space-y-3">
+              <div className="w-11 h-11 mx-auto rounded-lg bg-[#009639]/10 border border-[#009639]/20 flex items-center justify-center">
+                <Layers size={20} className="text-[#009639]" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-100 font-display">{t('Este sitio aún no tiene bloques')}</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">{t('Crea tu primer bloque server para empezar a definir el host.')}</p>
+              <button
+                onClick={() => addNode(activeSiteId, 'server')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#009639] hover:bg-[#007b2e] text-white rounded text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Plus size={14} /> {t('Añadir Server')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {isGlobal ? (
           /* Interactive Overlay Legend Indicator for Global */

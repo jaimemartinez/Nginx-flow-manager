@@ -48,7 +48,8 @@ import {
   AlertTriangle,
   Lock,
   Users,
-  Eye
+  Eye,
+  LogOut
 } from 'lucide-react';
 
 interface DashboardGridProps {
@@ -387,6 +388,28 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
               {t("Salir")}
             </button>
           </div>
+        </div>
+
+        {/* Compact mobile-only controls — the verbose right group above is hidden below md, which
+            otherwise left phone users with no way to switch language, manage users, or log out. */}
+        <div className="flex md:hidden items-center gap-1.5 shrink-0">
+          <LanguageToggle />
+          {isAdmin && (
+            <button
+              onClick={() => setUsersOpen(true)}
+              aria-label={t('Gestión de usuarios y roles')}
+              className="flex items-center px-2.5 py-1.5 bg-white/5 hover:bg-emerald-500/15 rounded border border-white/10 text-slate-300 hover:text-emerald-300 transition-all cursor-pointer"
+            >
+              <Users size={13} className="text-emerald-400" />
+            </button>
+          )}
+          <button
+            onClick={onLogout}
+            aria-label={t('Cerrar sesión administrador')}
+            className="flex items-center px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-white rounded border border-rose-500/20 transition-all cursor-pointer"
+          >
+            <LogOut size={13} />
+          </button>
         </div>
       </header>
 

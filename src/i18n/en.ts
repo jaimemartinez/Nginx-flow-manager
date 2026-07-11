@@ -451,6 +451,9 @@ export const EN: Record<string, string> = {
   // ── src/components/NginxCanvas.tsx ───────────────────────────────────────
   'Limpiar Arquitectura Global': 'Clear Global Architecture',
   'Limpiar Lienzo': 'Clear Canvas',
+  'Este sitio aún no tiene bloques': 'This site has no blocks yet',
+  'Crea tu primer bloque server para empezar a definir el host.': 'Create your first server block to start defining the host.',
+  'Añadir Server': 'Add Server',
   '¿Estás seguro de que deseas vaciar todos los bloques de la arquitectura general y streams?': 'Are you sure you want to empty all blocks of the global architecture and streams?',
   '¿Estás seguro de que deseas limpiar todo el diseño y nodos de este sitio virtual?': 'Are you sure you want to clear this virtual site\'s entire layout and nodes?',
   'Arquitectura Global:': 'Global Architecture:',
