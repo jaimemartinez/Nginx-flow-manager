@@ -2,8 +2,6 @@
 
 > Losslessly **import an existing, hand-written nginx config into an editable visual topology** — and round-trip it back out verbatim, without dropping or fabricating a single directive. From there, design on a canvas, compile to real nginx config with a pure-TypeScript compiler, validate it with `nginx -t` in a throwaway sandbox, and deploy to a remote Linux host over SSH.
 
-> **Note:** the UI is currently **Spanish-only** (no i18n / English translation yet).
-
 Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. Its genuine differentiator is the **verbatim round-trip import**: point it at a live, hand-written nginx tree and it parses the real config — comments, ordering, and unmodeled blocks included — into an editable canvas, then compiles it back out byte-for-faithfully. Tools like Nginx Proxy Manager, Caddy, or Ansible make you adopt *their* model of your config; NFM adopts *yours*. You lay out servers, locations, upstreams and global blocks as nodes on an interactive canvas; the app compiles that graph into actual nginx files, tests them against a real nginx binary in an isolated sandbox, and pushes the result to your server — either through a hardened on-server **nfm-agent** or a direct SSH/local fallback. Because the compiler and parser are designed for exact fidelity, you can import an existing config and round-trip it without losing or fabricating a single directive.
 
 ## Features
@@ -20,6 +18,7 @@ Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. Its 
 - **First-class graphical directives** — HTTP/2, HSTS, WebSocket upgrade, `try_files`/`alias`, proxy tuning, `expires` caching, upstream **response caching** (`proxy_cache`), and `allow`/`deny` access control are editable as structured fields, not raw text.
 - **conf.d / snippets editing** — included files outside the topology are kept as `extra_files` and written back verbatim.
 - **Multi-user RBAC** — three roles (admin / operator / viewer) with a single deny-by-default authorization gate: viewers read-only, operators edit + deploy, admins also manage users and system/agent settings. Manage users from the UI; an existing single-admin install is migrated transparently.
+- **English & Spanish UI (i18n)** — the language is auto-detected from the browser locale and switchable any time with the EN/ES toggle in the header (also on the login screen). Config text is never localized — nginx output stays byte-exact in either language.
 
 ## How it works
 

@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import {LanguageProvider} from './i18n/i18n.tsx';
 import './index.css';
 
 // Suppress benign ResizeObserver errors that bubble up from flexible containers or React Flow resize loops
@@ -32,6 +33,8 @@ if (typeof window !== 'undefined') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <LanguageProvider>
+      <App />
+    </LanguageProvider>
   </StrictMode>,
 );

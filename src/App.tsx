@@ -21,6 +21,8 @@ import { CommitModal } from './components/CommitModal';
 import { UserManager } from './components/UserManager';
 import { secureFetch } from './utils/api';
 import { roleLevel, type NfmRole } from './utils/rbac';
+import { useT } from './i18n/i18n';
+import { LanguageToggle } from './i18n/LanguageToggle';
 
 import { 
   Network, 
@@ -57,6 +59,7 @@ interface DashboardGridProps {
 
 function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGridProps) {
   const { state, activeSiteId, setActiveSiteId, runningState, hasChanges, confirmDialog, closeConfirmation, isInitialImporting, initialImportPhase } = useTopology();
+  const { t } = useT();
 
   const isAdmin = role === 'admin';
   const isViewer = roleLevel(role) < 2; // viewer: read-only
@@ -236,7 +239,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
           <button
             onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
             className={`items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-[#009639]/20 hover:bg-emerald-500/20 rounded text-xs text-emerald-400 hover:text-white font-semibold transition-all cursor-pointer ${mainView === 'files' ? 'hidden' : 'hidden lg:flex'}`}
-            title={leftPanelCollapsed ? "Mostrar panel lateral (Sites)" : "Ocultar panel lateral"}
+            title={leftPanelCollapsed ? t("Mostrar panel lateral (Sites)") : t("Ocultar panel lateral")}
           >
             {leftPanelCollapsed ? (
               <PanelLeft size={14} className="text-emerald-400" />
@@ -244,7 +247,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
               <PanelLeftClose size={14} className="text-emerald-400" />
             )}
             <span>
-              {leftPanelCollapsed ? "Mostrar Menú" : "Ocultar Menú"}
+              {leftPanelCollapsed ? t("Mostrar Menú") : t("Ocultar Menú")}
             </span>
           </button>
 
@@ -255,7 +258,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer ${
                 mainView === 'editor' ? 'bg-[#009639] text-white shadow shadow-emerald-950/20' : 'text-slate-400 hover:text-white'
               }`}
-              title="Editor visual (canvas y configuración)"
+              title={t("Editor visual (canvas y configuración)")}
             >
               <Network size={14} className={mainView === 'editor' ? 'text-white' : 'text-slate-400'} />
               <span>Editor</span>
@@ -265,10 +268,10 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer ${
                 mainView === 'files' ? 'bg-[#009639] text-white shadow shadow-emerald-950/20' : 'text-slate-400 hover:text-white'
               }`}
-              title="Archivos compilados, consola y logs (pantalla completa)"
+              title={t("Archivos compilados, consola y logs (pantalla completa)")}
             >
               <FileCode size={14} className={mainView === 'files' ? 'text-white' : 'text-slate-400'} />
-              <span>Archivos</span>
+              <span>{t("Archivos")}</span>
             </button>
           </div>
 
@@ -280,10 +283,10 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
                 ? 'bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/35 text-amber-300 hover:text-white animate-pulse' 
                 : 'bg-[#009639]/10 border border-[#009639]/30 hover:bg-[#009639]/20 text-emerald-400 hover:text-emerald-350'
             }`}
-            title={hasChanges ? "¡Tienes cambios en borrador! Haz click para Validar & Confirmar" : "Validar sintaxis & Confirmar configuración"}
+            title={hasChanges ? t("¡Tienes cambios en borrador! Haz click para Validar & Confirmar") : t("Validar sintaxis & Confirmar configuración")}
           >
             <GitCommit size={14} className={hasChanges ? 'text-amber-400' : 'text-emerald-400'} />
-            <span>Validar & Commit ⚡</span>
+            <span>{t("Validar & Commit ⚡")}</span>
           </button>
 
           {/* Ver Historial Button (Always visible) */}
@@ -296,11 +299,11 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
               }, 150);
             }}
             className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded text-xs text-slate-400 hover:text-slate-200 transition-all cursor-pointer shrink-0"
-            title="Ver historial de versiones de configuración"
+            title={t("Ver historial de versiones de configuración")}
           >
             <History size={14} className="text-slate-500" />
-            <span className="hidden xs:inline">Ver Historial</span>
-            <span className="xs:hidden">Historial</span>
+            <span className="hidden xs:inline">{t("Ver Historial")}</span>
+            <span className="xs:hidden">{t("Historial")}</span>
           </button>
         </div>
 
@@ -311,15 +314,15 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
         <div className="hidden md:flex items-center gap-1.5 xl:gap-3 text-xs font-mono min-w-0 shrink-0">
           {(() => {
             const m = {
-              loading:     { dot: 'bg-slate-500',                            text: 'Comprobando agente…', cls: 'text-slate-400' },
-              connected:   { dot: 'bg-emerald-500 shadow-[0_0_8px_#10b981]', text: 'Agente conectado',     cls: 'text-slate-300' },
-              unreachable: { dot: 'bg-amber-500 shadow-[0_0_8px_#f59e0b]',   text: 'Agente no responde',   cls: 'text-amber-300' },
-              absent:      { dot: 'bg-slate-600',                            text: 'Agente no instalado',  cls: 'text-slate-400' },
+              loading:     { dot: 'bg-slate-500',                            text: t('Comprobando agente…'), cls: 'text-slate-400' },
+              connected:   { dot: 'bg-emerald-500 shadow-[0_0_8px_#10b981]', text: t('Agente conectado'),     cls: 'text-slate-300' },
+              unreachable: { dot: 'bg-amber-500 shadow-[0_0_8px_#f59e0b]',   text: t('Agente no responde'),   cls: 'text-amber-300' },
+              absent:      { dot: 'bg-slate-600',                            text: t('Agente no instalado'),  cls: 'text-slate-400' },
             }[agentStatus];
             return (
               <button
                 onClick={() => setAgentOpen(true)}
-                title={`${m.text} — clic para gestionar/instalar el agente`}
+                title={t('{0} — clic para gestionar/instalar el agente', m.text)}
                 className={`flex items-center gap-2 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 text-xs font-mono whitespace-nowrap shrink-0 cursor-pointer transition-colors ${m.cls}`}
               >
                 <span className={`w-2 h-2 rounded-full ${m.dot}`}></span>
@@ -341,17 +344,18 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
           </div>
 
           <div className="flex items-center gap-1.5 pl-1.5 xl:pl-2 border-l border-white/10 shrink-0">
+            <LanguageToggle />
             <button
               onClick={() => setCertOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-[#009639]/15 rounded border border-white/10 hover:border-[#009639]/30 text-xs text-slate-300 hover:text-emerald-300 font-mono transition-all cursor-pointer shrink-0"
-              title="Certificados SSL (Let's Encrypt / certbot)"
+              title={t("Certificados SSL (Let's Encrypt / certbot)")}
             >
               <ShieldCheck size={13} className="text-[#009639]" />
             </button>
             <button
               onClick={() => setTlsOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-sky-500/15 rounded border border-white/10 hover:border-sky-500/30 text-xs text-slate-300 hover:text-sky-300 font-mono transition-all cursor-pointer shrink-0"
-              title="Certificado HTTPS del propio panel (puerto 3000)"
+              title={t("Certificado HTTPS del propio panel (puerto 3000)")}
             >
               <Lock size={13} className="text-sky-400" />
             </button>
@@ -360,24 +364,24 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
               <button
                 onClick={() => setUsersOpen(true)}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-emerald-500/15 rounded border border-white/10 hover:border-emerald-500/30 text-xs text-slate-300 hover:text-emerald-300 font-mono transition-all cursor-pointer shrink-0"
-                title="Gestión de usuarios y roles"
+                title={t("Gestión de usuarios y roles")}
               >
                 <Users size={13} className="text-emerald-400" />
               </button>
             )}
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs font-mono shrink-0" title={`Rol: ${role}`}>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded border border-white/10 text-xs font-mono shrink-0" title={t('Rol: {0}', role)}>
               {isViewer ? <Eye size={13} className="text-sky-400" /> : <ShieldCheck size={13} className="text-[#009639]" />}
-              <span className="text-slate-200">{adminUser || 'Usuario'}</span>
+              <span className="text-slate-200">{adminUser || t('Usuario')}</span>
               <span className={`text-[9px] uppercase font-bold ${role === 'admin' ? 'text-rose-300' : role === 'operator' ? 'text-emerald-300' : 'text-sky-300'}`}>{role}</span>
             </div>
 
             <button
               onClick={onLogout}
               className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-white rounded border border-rose-500/20 transition-all text-xs font-bold uppercase font-mono shrink-0 cursor-pointer"
-              title="Cerrar sesión administrador"
+              title={t("Cerrar sesión administrador")}
             >
-              Salir
+              {t("Salir")}
             </button>
           </div>
         </div>
@@ -467,7 +471,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
                 }`}
               >
                 <Layers size={11} />
-                <span>Sitios ({state.sites.length})</span>
+                <span>{t('Sitios ({0})', state.sites.length)}</span>
               </button>
               <button
                 onClick={() => {
@@ -554,10 +558,10 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
               </div>
               <div className="space-y-1.5 min-w-0">
                 <h3 className="text-xs font-bold text-white font-display tracking-wide uppercase">
-                  {confirmDialog.title}
+                  {t(confirmDialog.title)}
                 </h3>
                 <p className="text-[11px] text-slate-400 leading-normal font-sans whitespace-pre-line">
-                  {confirmDialog.message}
+                  {t(confirmDialog.message)}
                 </p>
               </div>
             </div>
@@ -568,14 +572,14 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
                 onClick={closeConfirmation}
                 className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] font-bold uppercase text-slate-300 transition-colors cursor-pointer"
               >
-                Cancelar
+                {t("Cancelar")}
               </button>
               <button
                 type="button"
                 onClick={confirmDialog.onConfirm}
                 className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-bold uppercase transition-colors shadow-lg shadow-rose-950/20 cursor-pointer"
               >
-                Confirmar
+                {t("Confirmar")}
               </button>
             </div>
           </div>
@@ -587,6 +591,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
 }
 
 function AppContent() {
+  const { t } = useT();
   const [isReinstallRoute] = useState(() => window.location.pathname === '/reinstall');
   const [reinstallDone, setReinstallDone] = useState(false);
   // SEC cookie-auth: auth state is derived from the server (GET /api/me validates the HttpOnly
@@ -695,7 +700,7 @@ function AppContent() {
       <div className="fixed inset-0 bg-[#070708] flex items-center justify-center font-sans z-[999999]">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#009639] mx-auto" />
-          <p className="text-xs text-slate-400 font-mono">Verificando sesión administrador...</p>
+          <p className="text-xs text-slate-400 font-mono">{t("Verificando sesión administrador...")}</p>
         </div>
       </div>
     );
@@ -713,8 +718,8 @@ function AppContent() {
       {forbiddenMsg && (
         <div className="fixed bottom-4 right-4 z-[100000] max-w-sm flex items-start gap-2 bg-rose-600/95 text-white text-xs font-mono px-3 py-2.5 rounded-lg shadow-2xl border border-rose-400/30">
           <Lock size={14} className="shrink-0 mt-0.5" />
-          <span>{forbiddenMsg}</span>
-          <button onClick={() => setForbiddenMsg(null)} className="ml-1 text-white/70 hover:text-white cursor-pointer" aria-label="cerrar">×</button>
+          <span>{t(forbiddenMsg)}</span>
+          <button onClick={() => setForbiddenMsg(null)} className="ml-1 text-white/70 hover:text-white cursor-pointer" aria-label={t("cerrar")}>×</button>
         </div>
       )}
     </ReactFlowProvider>

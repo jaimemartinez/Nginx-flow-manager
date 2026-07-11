@@ -6,12 +6,14 @@
 import React, { useState } from 'react';
 import { secureFetch } from '../utils/api';
 import { Shield, Lock, Eye, EyeOff, AlertTriangle, Loader2, ArrowRight, RotateCcw } from 'lucide-react';
+import { useT } from '../i18n/i18n';
 
 interface ReinstallPageProps {
   onReinstallSuccess: () => void;
 }
 
 export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
+  const { t } = useT();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +24,7 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!confirmed) {
-      setError('Debes confirmar que entiendes que se borrará la configuración actual.');
+      setError(t('Debes confirmar que entiendes que se borrará la configuración actual.'));
       return;
     }
 
@@ -39,7 +41,7 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
       const data = await res.json();
 
       if (res.status === 401 || !data.success) {
-        setError(data.error || 'Credenciales inválidas.');
+        setError(t(data.error || 'Credenciales inválidas.'));
         return;
       }
 
@@ -50,7 +52,7 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
 
       onReinstallSuccess();
     } catch (err: any) {
-      setError(`Error de red: ${err.message}`);
+      setError(t('Error de red: {0}', err.message));
     } finally {
       setLoading(false);
     }
@@ -69,10 +71,10 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-wider text-white uppercase font-mono">
-              Reinstalar Nginx Flow Manager
+              {t('Reinstalar Nginx Flow Manager')}
             </h1>
             <p className="text-[10px] text-slate-400 font-sans tracking-wide">
-              Verifica tu identidad para acceder al asistente de configuración
+              {t('Verifica tu identidad para acceder al asistente de configuración')}
             </p>
           </div>
         </div>
@@ -88,9 +90,9 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
           <div className="bg-amber-500/5 border border-amber-500/20 p-3 rounded-lg flex gap-3">
             <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <span className="text-amber-300 font-bold uppercase text-[10px] font-mono block">Advertencia</span>
+              <span className="text-amber-300 font-bold uppercase text-[10px] font-mono block">{t('Advertencia')}</span>
               <p className="text-[10px] text-slate-400 leading-relaxed">
-                Esto borrará toda la configuración actual (sitios, versiones, credenciales) y te llevará al asistente de instalación desde cero.
+                {t('Esto borrará toda la configuración actual (sitios, versiones, credenciales) y te llevará al asistente de instalación desde cero.')}
               </p>
             </div>
           </div>
@@ -98,7 +100,7 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Usuario Administrador Actual</label>
+                <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Usuario Administrador Actual')}</label>
                 <input
                   type="text"
                   value={username}
@@ -110,14 +112,14 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Contraseña Actual</label>
+                <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Contraseña Actual')}</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-2 w-full focus:outline-none focus:border-rose-500 transition-colors pl-8 pr-8"
-                    placeholder="Contraseña"
+                    placeholder={t('Contraseña')}
                     required
                   />
                   <div className="absolute left-2.5 top-3 text-slate-500">
@@ -142,7 +144,7 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
                 className="mt-0.5 accent-rose-500"
               />
               <span className="text-[10px] text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors">
-                Entiendo que esta acción borrará toda la configuración y el historial de versiones actual de forma irreversible.
+                {t('Entiendo que esta acción borrará toda la configuración y el historial de versiones actual de forma irreversible.')}
               </span>
             </label>
 
@@ -151,7 +153,7 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
               disabled={loading || !confirmed}
               className="w-full bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white text-[10px] uppercase tracking-widest font-bold py-2.5 rounded shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
             >
-              {loading ? <Loader2 size={12} className="animate-spin" /> : <><RotateCcw size={12} /> Confirmar Reinstalación <ArrowRight size={12} /></>}
+              {loading ? <Loader2 size={12} className="animate-spin" /> : <><RotateCcw size={12} /> {t('Confirmar Reinstalación')} <ArrowRight size={12} /></>}
             </button>
 
             <div className="text-center">
@@ -159,7 +161,7 @@ export function ReinstallPage({ onReinstallSuccess }: ReinstallPageProps) {
                 href="/"
                 className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors font-mono"
               >
-                ← Volver al inicio
+                {t('← Volver al inicio')}
               </a>
             </div>
           </form>

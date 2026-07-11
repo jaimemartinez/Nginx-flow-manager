@@ -6,8 +6,10 @@
 import React, { useState } from 'react';
 import { useTopology } from '../context/TopologyContext';
 import { Plus, Trash2, Link, Layers, ToggleLeft, ToggleRight, FileText, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { useT } from '../i18n/i18n';
 
 export const SiteManager: React.FC = () => {
+  const { t } = useT();
   const {
     state,
     activeSiteId,
@@ -45,9 +47,8 @@ export const SiteManager: React.FC = () => {
     // discarding any unsaved draft. Only warn when there is actually something to lose.
     if (hasChanges) {
       askConfirmation(
-        'Sincronizar sitios desde el servidor',
-        'Se recargarán los sitios desde el servidor, reemplazando los del lienzo actual.\n\n' +
-        'Se perderán todos los cambios no guardados del borrador (Candidate). ¿Deseas continuar?',
+        t('Sincronizar sitios desde el servidor'),
+        t('Se recargarán los sitios desde el servidor, reemplazando los del lienzo actual.\n\nSe perderán todos los cambios no guardados del borrador (Candidate). ¿Deseas continuar?'),
         () => { void runScan(); }
       );
     } else {
@@ -213,8 +214,8 @@ export const SiteManager: React.FC = () => {
                         <button 
                           onClick={() => {
                             askConfirmation(
-                              'Borrar Archivo de Configuración',
-                              `¿Estás seguro de que deseas eliminar permanentemente el archivo virtual: ${site.filename}?`,
+                              t('Borrar Archivo de Configuración'),
+                              t('¿Estás seguro de que deseas eliminar permanentemente el archivo virtual: {0}?', site.filename),
                               () => {
                                 removeSite(site.id);
                               }

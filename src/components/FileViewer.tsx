@@ -10,6 +10,7 @@ import { compileNginxTopology, simulateSymlinksReconciliation, generateBashRecon
 import { Folder, FolderOpen, FileCode, Terminal, Copy, Check, Info, HardDrive, RefreshCw, Layers, AlertTriangle, GitCompare, ScrollText, History, Hash } from 'lucide-react';
 import { VersionManager } from './VersionManager';
 import { NginxCommit } from '../types';
+import { useT } from '../i18n/i18n';
 
 type DiffRow = { t: 'same' | 'add' | 'del'; v: string };
 
@@ -51,6 +52,7 @@ function diffLines(oldText: string, newText: string): DiffRow[] {
 }
 
 export const FileViewer: React.FC = () => {
+  const { t } = useT();
   const { state, runningState, discardCandidateChanges, hasChanges, askConfirmation, runningFiles, updateExtraFile } = useTopology();
 
   const [selectedCommit, setSelectedCommit] = useState<NginxCommit | null>(null);
@@ -383,7 +385,7 @@ export const FileViewer: React.FC = () => {
             }`}
           >
             <History size={13} />
-            <span>Versiones</span>
+            <span>{t('Versiones')}</span>
           </button>
         </div>
 
@@ -400,7 +402,7 @@ export const FileViewer: React.FC = () => {
               title="Visualize current changes on canvas sandbox"
             >
               <span>Candidate</span>
-              {hasChanges && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Modificaciones pendientes"></span>}
+              {hasChanges && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title={t('Modificaciones pendientes')}></span>}
             </button>
             <button
               onClick={() => setViewMode('running')}
@@ -409,10 +411,10 @@ export const FileViewer: React.FC = () => {
                   ? 'bg-emerald-500/10 text-emerald-300 border border-[#009639]/30'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title={selectedCommit ? `Ver configuración de la versión "${selectedCommit.message}"` : "Visualize last committed/applied config running on OS"}
+              title={selectedCommit ? t('Ver configuración de la versión "{0}"', selectedCommit.message) : "Visualize last committed/applied config running on OS"}
             >
               <span className={`w-1 h-1 rounded-full bg-emerald-400 ${viewMode === 'running' ? 'animate-pulse' : ''}`}></span>
-              <span>{selectedCommit ? `Versión: ${selectedCommit.message.substring(0, 15)}${selectedCommit.message.length > 15 ? '...' : ''}` : 'Running'}</span>
+              <span>{selectedCommit ? t('Versión: {0}', `${selectedCommit.message.substring(0, 15)}${selectedCommit.message.length > 15 ? '...' : ''}`) : 'Running'}</span>
             </button>
             <button
               onClick={() => setViewMode('diff')}
@@ -421,7 +423,7 @@ export const FileViewer: React.FC = () => {
                   ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title={selectedCommit ? "Comparar esta versión con tu borrador Candidate" : "Comparar Running vs Candidate (lo que cambiaría al desplegar)"}
+              title={selectedCommit ? t("Comparar esta versión con tu borrador Candidate") : t("Comparar Running vs Candidate (lo que cambiaría al desplegar)")}
             >
               <GitCompare size={11} />
               Diff
@@ -439,7 +441,7 @@ export const FileViewer: React.FC = () => {
             <div className="bg-sky-500/5 border-b border-sky-500/10 px-4 py-1.5 flex items-center justify-between text-[11px] text-sky-400 gap-2 font-mono shrink-0">
               <span className="flex items-center gap-1.5">
                 <span className="block w-2 h-2 rounded-full bg-sky-400 animate-pulse shrink-0"></span>
-                <span>VIENDO CONFIGURACIÓN DE LA VERSIÓN: <strong>{selectedCommit.message}</strong> (Operador: {selectedCommit.author})</span>
+                <span>{t('VIENDO CONFIGURACIÓN DE LA VERSIÓN:')} <strong>{selectedCommit.message}</strong> {t('(Operador: {0})', selectedCommit.author)}</span>
               </span>
               <button
                 onClick={() => {
@@ -448,7 +450,7 @@ export const FileViewer: React.FC = () => {
                 }}
                 className="px-2 py-0.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-300 hover:text-white rounded text-[10px] uppercase transition-all cursor-pointer font-bold"
               >
-                Volver al Borrador
+                {t('Volver al Borrador')}
               </button>
             </div>
           )}
@@ -458,13 +460,13 @@ export const FileViewer: React.FC = () => {
             <div className="bg-amber-500/5 border-b border-amber-500/10 px-4 py-1.5 flex items-center justify-between text-[11px] text-amber-400 gap-2 font-mono">
               <span className="flex items-center gap-1.5">
                 <span className="block w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
-                <span>BORRADOR TIENE CAMBIOS SIN MANDAR (Candidate != Running)</span>
+                <span>{t('BORRADOR TIENE CAMBIOS SIN MANDAR (Candidate != Running)')}</span>
               </span>
               <button
                 onClick={() => {
                   askConfirmation(
-                    'Descartar Cambios',
-                    '¿Deseas descartar todos los cambios del borrador y restaurarlo al estado de ejecución (Running) activo?',
+                    t('Descartar Cambios'),
+                    t('¿Deseas descartar todos los cambios del borrador y restaurarlo al estado de ejecución (Running) activo?'),
                     () => {
                       discardCandidateChanges();
                     }
@@ -472,7 +474,7 @@ export const FileViewer: React.FC = () => {
                 }}
                 className="px-2 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-300 hover:text-white rounded text-[10px] uppercase transition-all cursor-pointer font-bold"
               >
-                Descartar Cambios
+                {t('Descartar Cambios')}
               </button>
             </div>
           )}
@@ -481,7 +483,7 @@ export const FileViewer: React.FC = () => {
           {viewMode === 'running' && realFilesSshError && (
             <div className="bg-rose-500/5 border-b border-rose-500/10 px-4 py-2 flex items-center gap-2 text-[11px] text-rose-400 font-mono">
               <AlertTriangle size={13} className="shrink-0" />
-              <span className="truncate">SSH: {realFilesSshError} — mostrando config compilada como referencia</span>
+              <span className="truncate">{t('SSH: {0} — mostrando config compilada como referencia', t(realFilesSshError))}</span>
             </div>
           )}
 
@@ -489,7 +491,7 @@ export const FileViewer: React.FC = () => {
           {viewMode === 'running' && realFilesNotFound && !realFilesSshError && (
             <div className="bg-amber-500/5 border-b border-amber-500/10 px-4 py-2 flex items-center gap-2 text-[11px] text-amber-400 font-mono">
               <AlertTriangle size={13} className="shrink-0" />
-              <span>Archivos nginx no encontrados en disco — mostrando config compilada como referencia</span>
+              <span>{t('Archivos nginx no encontrados en disco — mostrando config compilada como referencia')}</span>
             </div>
           )}
 
@@ -497,7 +499,7 @@ export const FileViewer: React.FC = () => {
           {viewMode === 'running' && !hasRunningFiles && !realFilesNotFound && (
             <div className="bg-emerald-500/5 border-b border-emerald-500/10 px-4 py-2 flex items-center gap-2 text-[11px] text-emerald-400 font-mono">
               <RefreshCw size={12} className="shrink-0" />
-              <span>Aún no sincronizado — realiza un sync o deploy para ver los archivos reales</span>
+              <span>{t('Aún no sincronizado — realiza un sync o deploy para ver los archivos reales')}</span>
             </div>
           )}
 
@@ -616,7 +618,7 @@ export const FileViewer: React.FC = () => {
                       <div key={dir} className="space-y-1 pt-2">
                         <div className="flex items-center gap-1.5 text-slate-400 font-semibold py-0.5">
                           <Folder size={12} className="text-amber-500/70" />
-                          <span>{dir}/ <span className="text-[9px] text-amber-400/70 font-mono">(incluidos)</span></span>
+                          <span>{dir}/ <span className="text-[9px] text-amber-400/70 font-mono">{t('(incluidos)')}</span></span>
                         </div>
                         <div className="pl-3 space-y-1 border-l border-white/5 ml-1">
                           {dirPaths.map((path) => {
@@ -666,10 +668,10 @@ export const FileViewer: React.FC = () => {
                         ? 'bg-[#009639]/15 border-[#009639]/40 text-emerald-300'
                         : 'bg-[#0A0A0B] border-white/10 text-slate-400 hover:text-slate-200'
                     }`}
-                    title="Ocultar/mostrar líneas de comentario (#)"
+                    title={t('Ocultar/mostrar líneas de comentario (#)')}
                   >
                     <Hash size={11} />
-                    <span>{hideComments ? 'Comentarios: ocultos' : 'Comentarios'}</span>
+                    <span>{hideComments ? t('Comentarios: ocultos') : t('Comentarios')}</span>
                   </button>
                 )}
                 <button
@@ -699,12 +701,12 @@ export const FileViewer: React.FC = () => {
                   value={activeContent}
                   onChange={(e) => updateExtraFile(selectedFilePath, e.target.value)}
                   spellCheck={false}
-                  placeholder="Archivo incluido editable — se desplegará verbatim a su ruta."
+                  placeholder={t('Archivo incluido editable — se desplegará verbatim a su ruta.')}
                 />
               ) : viewMode === 'diff' ? (
                 diffStats.add === 0 && diffStats.del === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-slate-650 italic gap-2">
-                    <Check size={14} className="text-emerald-400" /> Sin diferencias — candidate idéntico a running para este archivo
+                    <Check size={14} className="text-emerald-400" /> {t('Sin diferencias — candidate idéntico a running para este archivo')}
                   </div>
                 ) : (
                   <div className="flex-1 overflow-x-auto">
@@ -756,7 +758,7 @@ export const FileViewer: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <span>Lines: {displayContent.split('\n').length}{hideComments && activeContent !== displayContent ? ` (de ${activeContent.split('\n').length})` : ''}</span>
+                  <span>Lines: {displayContent.split('\n').length}{hideComments && activeContent !== displayContent ? t(' (de {0})', activeContent.split('\n').length) : ''}</span>
                   <span>Size: {(displayContent.length / 1024).toFixed(2)} KB</span>
                 </>
               )}
@@ -789,10 +791,10 @@ export const FileViewer: React.FC = () => {
                 <button
                   onClick={() => setLiveMode(v => !v)}
                   className={`flex items-center gap-1 px-2 py-0.5 rounded border cursor-pointer ${liveMode ? 'bg-[#009639]/15 border-[#009639]/30 text-emerald-300' : 'bg-white/5 border-white/10 text-slate-400'}`}
-                  title="Streaming en vivo vía agente seguro"
+                  title={t('Streaming en vivo vía agente seguro')}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${streaming ? 'bg-emerald-400 animate-pulse' : liveMode ? 'bg-amber-400' : 'bg-slate-600'}`}></span>
-                  {streaming ? 'en vivo (agente)' : liveMode ? 'conectando…' : 'en vivo: off'}
+                  {streaming ? t('en vivo (agente)') : liveMode ? t('conectando…') : t('en vivo: off')}
                 </button>
               ) : (
                 <span>auto-refresh 5s</span>
@@ -801,7 +803,7 @@ export const FileViewer: React.FC = () => {
                 onClick={() => fetchNginxLogs(logType)}
                 className="px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-slate-300 cursor-pointer"
               >
-                Refrescar
+                {t('Refrescar')}
               </button>
             </div>
           </div>
@@ -810,13 +812,13 @@ export const FileViewer: React.FC = () => {
               <pre className="text-slate-300 whitespace-pre-wrap break-all select-text">{logContent}</pre>
             ) : (
               <div className="flex items-center justify-center text-slate-650 italic h-full">
-                {logLoading ? 'Cargando logs...' : 'Sin entradas de log (o archivo no accesible vía SSH).'}
+                {logLoading ? t('Cargando logs...') : t('Sin entradas de log (o archivo no accesible vía SSH).')}
               </div>
             )}
           </div>
           <div className="bg-[#121214]/60 border-t border-white/10 px-4 py-1.5 flex justify-between text-[10px] text-slate-500 font-mono shrink-0">
             <span>/var/log/nginx/{logType}.log</span>
-            <span>{logContent.split('\n').filter(Boolean).length} líneas</span>
+            <span>{t('{0} líneas', logContent.split('\n').filter(Boolean).length)}</span>
           </div>
         </div>
       ) : activeTab === 'terminal' ? (
@@ -871,9 +873,9 @@ export const FileViewer: React.FC = () => {
               <div className="flex items-center gap-2 pt-2 border-t border-white/15">
                 <span className="text-emerald-500 animate-pulse">●</span>
                 <span className="text-slate-550 italic">
-                  {realLogs.length > 0 
-                    ? "Daemon hot-reloader activo en tiempo real. Logs del sistema sincronizados." 
-                    : "Esperando confirmación de borrador o cambios en caliente..."}
+                  {realLogs.length > 0
+                    ? t("Daemon hot-reloader activo en tiempo real. Logs del sistema sincronizados.")
+                    : t("Esperando confirmación de borrador o cambios en caliente...")}
                 </span>
               </div>
             </div>

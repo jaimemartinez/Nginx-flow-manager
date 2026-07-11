@@ -6,6 +6,7 @@
 import React from 'react';
 import { useTopology } from '../context/TopologyContext';
 import { useReactFlow } from '@xyflow/react';
+import { useT } from '../i18n/i18n';
 import { 
   Settings, 
   Cpu, 
@@ -22,6 +23,7 @@ import {
 
 export const GlobalConfigPanel: React.FC = () => {
   const { state, discoverAndImportGlobalConfig, askConfirmation, hasChanges, updateGlobal } = useTopology();
+  const { t } = useT();
   const { global } = state;
   const { setCenter } = useReactFlow();
   const [isSyncing, setIsSyncing] = React.useState(false);
@@ -37,9 +39,8 @@ export const GlobalConfigPanel: React.FC = () => {
     // discarding any unsaved draft. Only warn when there is actually something to lose.
     if (hasChanges) {
       askConfirmation(
-        'Sincronizar desde el servidor',
-        'Se recargará la configuración global y los sitios desde el servidor, reemplazando el lienzo actual.\n\n' +
-        'Se perderán todos los cambios no guardados del borrador (Candidate). ¿Deseas continuar?',
+        t('Sincronizar desde el servidor'),
+        t('Se recargará la configuración global y los sitios desde el servidor, reemplazando el lienzo actual.\n\nSe perderán todos los cambios no guardados del borrador (Candidate). ¿Deseas continuar?'),
         () => { void runSyncGlobal(); }
       );
     } else {
@@ -91,10 +92,10 @@ export const GlobalConfigPanel: React.FC = () => {
           onClick={handleSyncGlobal}
           disabled={isSyncing}
           className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-emerald-400 border border-[#009639]/20 rounded font-mono transition-all hover:border-[#009639]/50 disabled:opacity-55 cursor-pointer"
-          title="Sincronizar y cargar la configuración del archivo nginx.conf actual del sistema"
+          title={t('Sincronizar y cargar la configuración del archivo nginx.conf actual del sistema')}
         >
           <RefreshCw size={10} className={isSyncing ? 'animate-spin' : ''} />
-          {isSyncing ? 'Sincronizando...' : 'Sincronizar Nginx.conf'}
+          {isSyncing ? t('Sincronizando...') : t('Sincronizar Nginx.conf')}
         </button>
       </div>
 
@@ -102,7 +103,7 @@ export const GlobalConfigPanel: React.FC = () => {
       <div className="bg-[#009639]/5 rounded border border-[#009639]/15 p-3 flex gap-2">
         <HelpCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
         <p className="text-[10px] text-slate-400 leading-relaxed font-sans">
-          La configuración global de <strong>nginx.conf</strong> se edita de forma visual. Haz clic en cualquier elemento de la lista para centrar la cámara del lienzo en él.
+          {t('La configuración global de')} <strong>nginx.conf</strong> {t('se edita de forma visual. Haz clic en cualquier elemento de la lista para centrar la cámara del lienzo en él.')}
         </p>
       </div>
 
@@ -111,25 +112,25 @@ export const GlobalConfigPanel: React.FC = () => {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Radio size={14} className="text-sky-400 shrink-0" />
-            <span className="text-[11px] font-bold text-slate-200">Visualización de tráfico en vivo</span>
+            <span className="text-[11px] font-bold text-slate-200">{t('Visualización de tráfico en vivo')}</span>
           </div>
           <button
             type="button"
             onClick={() => updateGlobal({ traffic_viz_enabled: !global.traffic_viz_enabled })}
             className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${global.traffic_viz_enabled ? 'bg-sky-500' : 'bg-white/10'}`}
-            title="Genera un log_format JSON dedicado (nfm_viz) para animar el tráfico en el lienzo"
+            title={t('Genera un log_format JSON dedicado (nfm_viz) para animar el tráfico en el lienzo')}
           >
             <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${global.traffic_viz_enabled ? 'left-[18px]' : 'left-0.5'}`} />
           </button>
         </div>
         <p className="text-[9px] text-slate-500 mt-1.5 leading-relaxed">
-          Añade un <code className="text-sky-300">log_format nfm_viz</code> + access_log. <strong className="text-slate-400">Valida y despliega</strong> para aplicarlo; luego usa el botón <strong className="text-sky-300">Live</strong> del lienzo.
+          {t('Añade un')} <code className="text-sky-300">log_format nfm_viz</code> + access_log. <strong className="text-slate-400">{t('Valida y despliega')}</strong> {t('para aplicarlo; luego usa el botón')} <strong className="text-sky-300">Live</strong> {t('del lienzo.')}
         </p>
       </div>
 
       {/* Nodos Core Outline List */}
       <div className="space-y-2">
-        <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider">Bloques Principales</span>
+        <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider">{t('Bloques Principales')}</span>
 
         {coreNode && (
           <div 
@@ -188,12 +189,12 @@ export const GlobalConfigPanel: React.FC = () => {
 
       {/* TCP/UDP Layer 4 Streams */}
       <div className="space-y-2 pt-1">
-        <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider">Proxies Capa 4 (Streams) ({streamNodes.length})</span>
+        <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider">{t('Proxies Capa 4 (Streams) ({0})', streamNodes.length)}</span>
         
         {streamNodes.length === 0 ? (
           <div className="text-center p-4 bg-[#0A0A0B] rounded border border-white/5">
             <p className="text-[9.5px] text-slate-600 font-mono italic">
-              No hay proxies de red L4 configurados.
+              {t('No hay proxies de red L4 configurados.')}
             </p>
           </div>
         ) : (
@@ -232,7 +233,7 @@ export const GlobalConfigPanel: React.FC = () => {
       {/* Raw Config Blocks */}
       {rawNodes.length > 0 && (
         <div className="space-y-2 pt-1">
-          <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider">Configuraciones Crudas ({rawNodes.length})</span>
+          <span className="block text-[9px] text-slate-500 font-bold uppercase tracking-wider">{t('Configuraciones Crudas ({0})', rawNodes.length)}</span>
           <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
             {rawNodes.map((rNode) => (
               <div 
@@ -244,10 +245,10 @@ export const GlobalConfigPanel: React.FC = () => {
                   <FileCode size={13} className="text-amber-400" />
                   <div className="min-w-0">
                     <span className="text-[11px] font-semibold text-slate-200 block truncate leading-tight">
-                      {rNode.data.label || 'Config cruda'}
+                      {rNode.data.label || t('Config cruda')}
                     </span>
                     <span className="text-[9px] text-slate-500 font-mono block truncate mt-0.5">
-                      contexto: {rNode.data.context || 'http'}
+                      {t('contexto:')} {rNode.data.context || 'http'}
                     </span>
                   </div>
                 </div>

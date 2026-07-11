@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Server, Globe, Layout, CheckCircle2, Loader2 } from 'lucide-react';
+import { useT } from '../i18n/i18n';
 
 interface InitialImportOverlayProps {
   phase: string;
@@ -20,14 +21,15 @@ function matchPhase(phase: string) {
 }
 
 export function InitialImportOverlay({ phase }: InitialImportOverlayProps) {
+  const { t } = useT();
   const [dots, setDots] = useState('');
   const currentIdx = matchPhase(phase);
   const isDone = phase.includes('Listo');
 
   useEffect(() => {
     if (isDone) return;
-    const t = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 400);
-    return () => clearInterval(t);
+    const intervalId = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 400);
+    return () => clearInterval(intervalId);
   }, [isDone]);
 
   return (
@@ -47,9 +49,9 @@ export function InitialImportOverlay({ phase }: InitialImportOverlayProps) {
             </div>
             <div>
               <h2 className="text-sm font-bold text-white font-mono tracking-wide uppercase">
-                Importando configuración nginx
+                {t('Importando configuración nginx')}
               </h2>
-              <p className="text-[10px] text-slate-400 mt-0.5">Primera ejecución — esto solo ocurre una vez</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{t('Primera ejecución — esto solo ocurre una vez')}</p>
             </div>
           </div>
 
@@ -76,7 +78,7 @@ export function InitialImportOverlay({ phase }: InitialImportOverlayProps) {
                     }
                   </div>
                   <span className={`text-[11px] font-mono ${active ? 'text-white' : done ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {p.label}{active ? dots : ''}
+                    {t(p.label)}{active ? dots : ''}
                   </span>
                 </div>
               );
@@ -86,7 +88,7 @@ export function InitialImportOverlay({ phase }: InitialImportOverlayProps) {
           {/* Current phase text */}
           <div className="bg-white/[0.02] border border-white/5 rounded-lg px-3 py-2 min-h-[32px] flex items-center">
             <p className={`text-[11px] font-mono transition-all duration-300 ${isDone ? 'text-emerald-400' : 'text-slate-300'}`}>
-              {isDone ? '✓ Configuración importada y guardada' : (phase || 'Iniciando...')}
+              {isDone ? t('✓ Configuración importada y guardada') : t(phase || 'Iniciando...')}
               {!isDone && dots}
             </p>
           </div>

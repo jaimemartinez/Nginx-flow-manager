@@ -11,6 +11,7 @@ import { ServerNodeData, LocationNodeData, UpstreamNodeData, UpstreamServer, Ngi
 import { Server, Route, Network, Plus, Trash2, Shield, ShieldAlert, Settings, HelpCircle, ChevronDown, ChevronUp, Lock, AlertTriangle, Maximize2, X, Eraser } from 'lucide-react';
 import { secureFetch } from '../utils/api';
 import { htpasswdApr1 } from '../utils/htpasswd';
+import { useT } from '../i18n/i18n';
 
 function getNodeDimensions(type: string | undefined) {
   if (type === 'server') {
@@ -278,6 +279,7 @@ interface CustomHeadersEditorProps {
 }
 
 const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [], onChange }) => {
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
 
   const addHeader = (e: React.MouseEvent) => {
@@ -314,7 +316,7 @@ const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [],
           className="nodrag flex items-center gap-1.5 font-bold font-mono text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
         >
           {isOpen ? <ChevronUp size={11} className="text-slate-500" /> : <ChevronDown size={11} className="text-slate-500" />}
-          <span>CABECERAS HTTP {headers.length > 0 && `(${headers.length})`}</span>
+          <span>{t('CABECERAS HTTP')} {headers.length > 0 && `(${headers.length})`}</span>
         </button>
         {isOpen && (
           <button
@@ -322,7 +324,7 @@ const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [],
             onClick={addHeader}
             className="nodrag text-[9px] text-emerald-450 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
           >
-            <Plus size={10} /> Añadir
+            <Plus size={10} /> {t('Añadir')}
           </button>
         )}
       </div>
@@ -331,7 +333,7 @@ const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [],
         <div className="space-y-2 mt-2 font-mono">
           {headers.length === 0 ? (
             <div className="text-[10px] py-1.5 px-1 text-slate-500 italic border border-dashed border-white/5 bg-[#0A0A0B]/20 rounded text-center">
-              Sin cabeceras añadidas.
+              {t('Sin cabeceras añadidas.')}
             </div>
           ) : (
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -349,7 +351,7 @@ const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [],
                       type="button"
                       onClick={(e) => removeHeader(e, h.id)}
                       className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1"
-                      title="Eliminar Cabecera"
+                      title={t('Eliminar Cabecera')}
                     >
                       <Trash2 size={11} />
                     </button>
@@ -389,6 +391,7 @@ interface AccessControlEditorProps {
 }
 
 const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], onChange }) => {
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
 
   const addRule = (e: React.MouseEvent) => {
@@ -412,7 +415,7 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
           className="nodrag flex items-center gap-1.5 font-bold font-mono text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
         >
           {isOpen ? <ChevronUp size={11} className="text-slate-500" /> : <ChevronDown size={11} className="text-slate-500" />}
-          <span>CONTROL DE ACCESO {rules.length > 0 && `(${rules.length})`}</span>
+          <span>{t('CONTROL DE ACCESO')} {rules.length > 0 && `(${rules.length})`}</span>
         </button>
         {isOpen && (
           <button
@@ -420,7 +423,7 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
             onClick={addRule}
             className="nodrag text-[9px] text-emerald-450 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
           >
-            <Plus size={10} /> Añadir
+            <Plus size={10} /> {t('Añadir')}
           </button>
         )}
       </div>
@@ -429,7 +432,7 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
         <div className="space-y-2 mt-2 font-mono">
           {rules.length === 0 ? (
             <div className="text-[10px] py-1.5 px-1 text-slate-500 italic border border-dashed border-white/5 bg-[#0A0A0B]/20 rounded text-center">
-              Sin reglas. El orden importa (primera coincidencia gana).
+              {t('Sin reglas. El orden importa (primera coincidencia gana).')}
             </div>
           ) : (
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
@@ -448,13 +451,13 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
                     className="nodrag bg-[#121214] border border-white/10 rounded px-1.5 py-1 text-slate-300 text-[10px] flex-grow focus:outline-none focus:border-[#009639]"
                     value={r.source}
                     onChange={(e) => updateRule(r.id, 'source', e.target.value)}
-                    placeholder="192.168.0.0/16 o all"
+                    placeholder={t('192.168.0.0/16 o all')}
                   />
                   <button
                     type="button"
                     onClick={(e) => removeRule(e, r.id)}
                     className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1"
-                    title="Eliminar regla"
+                    title={t('Eliminar regla')}
                   >
                     <Trash2 size={11} />
                   </button>
@@ -494,6 +497,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
   auth_request_headers_forward = [],
   onChange,
 }) => {
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [newUser, setNewUser] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -542,10 +546,10 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
           className="nodrag flex items-center gap-1.5 font-bold font-mono text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
         >
           {isOpen ? <ChevronUp size={11} className="text-slate-500" /> : <ChevronDown size={11} className="text-slate-500" />}
-          <span>AUTENTICACIÓN</span>
+          <span>{t('AUTENTICACIÓN')}</span>
         </button>
         <span className="text-[8px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded uppercase font-mono font-bold tracking-wider select-none shrink-0 border border-white/5">
-          {activeMode === 'none' ? 'Inactiva' : activeMode === 'basic' ? 'Basic' : 'Subrequest'}
+          {activeMode === 'none' ? t('Inactiva') : activeMode === 'basic' ? 'Basic' : 'Subrequest'}
         </span>
       </div>
 
@@ -578,8 +582,8 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                 className="nodrag mt-0.5 accent-[#009639] cursor-pointer"
               />
               <span className="text-[10px] text-slate-300 leading-tight">
-                Desactivar auth heredada (<code className="text-slate-400">auth_basic off;</code>)
-                <span className="block text-[9px] text-slate-500">Para una location pública bajo un server con Basic Auth.</span>
+                {t('Desactivar auth heredada')} (<code className="text-slate-400">auth_basic off;</code>)
+                <span className="block text-[9px] text-slate-500">{t('Para una location pública bajo un server con Basic Auth.')}</span>
               </span>
             </label>
           )}
@@ -587,7 +591,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
           {activeMode === 'basic' && (
             <div className="bg-[#0A0A0B] border border-white/10 p-2 rounded flex flex-col gap-2 shadow-inner">
               <div>
-                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Área / Realm (auth_basic)</label>
+                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">{t('Área / Realm (auth_basic)')}</label>
                 <input
                   type="text"
                   className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-250 text-[10px] w-full focus:outline-none focus:border-[#009639]"
@@ -598,7 +602,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
               </div>
               <div>
                 <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">
-                  Usuarios (.htpasswd gestionado){auth_basic_users.length > 0 ? ` (${auth_basic_users.length} usuario${auth_basic_users.length === 1 ? '' : 's'})` : ''}
+                  {t('Usuarios (.htpasswd gestionado)')}{auth_basic_users.length > 0 ? ` (${auth_basic_users.length} ${auth_basic_users.length === 1 ? t('usuario') : t('usuarios')})` : ''}
                 </label>
                 <div className="flex flex-col gap-1">
                   {auth_basic_users.map((u) => (
@@ -609,7 +613,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onChange('auth_basic_users', auth_basic_users.filter((x) => x.id !== u.id)); }}
                         className="nodrag shrink-0 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
-                        title="Eliminar usuario"
+                        title={t('Eliminar usuario')}
                       >
                         <Trash2 size={10} />
                       </button>
@@ -621,14 +625,14 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                       className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] flex-1 min-w-0 focus:outline-none focus:border-[#009639]"
                       value={newUser}
                       onChange={(e) => setNewUser(e.target.value)}
-                      placeholder="usuario"
+                      placeholder={t('usuario')}
                     />
                     <input
                       type="password"
                       className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] flex-1 min-w-0 focus:outline-none focus:border-[#009639]"
                       value={newPass}
                       onChange={(e) => setNewPass(e.target.value)}
-                      placeholder="contraseña"
+                      placeholder={t('contraseña')}
                     />
                     <button
                       type="button"
@@ -642,13 +646,13 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                       }}
                       className="nodrag shrink-0 bg-[#009639] hover:bg-[#00b347] text-white text-[9px] font-bold uppercase px-2 py-1 rounded transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      + Añadir
+                      {t('+ Añadir')}
                     </button>
                   </div>
                 </div>
               </div>
               <div>
-                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Archivo .htpasswd manual (opcional — ignorado si hay usuarios arriba)</label>
+                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">{t('Archivo .htpasswd manual (opcional — ignorado si hay usuarios arriba)')}</label>
                 <input
                   type="text"
                   className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] w-full focus:outline-none focus:border-[#009639]"
@@ -659,7 +663,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
               </div>
               <div className="text-[9px] text-slate-500 flex items-start gap-1 p-0.5 bg-white/2 rounded">
                 <Shield size={10} className="shrink-0 mt-0.5 text-slate-400" />
-                <span>Los usuarios añadidos arriba se hashean (apr1, salteado) y se escriben en un .htpasswd generado automáticamente — sin CLI.</span>
+                <span>{t('Los usuarios añadidos arriba se hashean (apr1, salteado) y se escriben en un .htpasswd generado automáticamente — sin CLI.')}</span>
               </div>
             </div>
           )}
@@ -667,7 +671,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
           {activeMode === 'auth_request' && (
             <div className="bg-[#0A0A0B] border border-white/10 p-2 rounded flex flex-col gap-2.5 shadow-inner">
               <div>
-                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Ruta Subrequest (auth_request)</label>
+                <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">{t('Ruta Subrequest (auth_request)')}</label>
                 <input
                   type="text"
                   className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-250 text-[10px] w-full focus:outline-none focus:border-[#009639]"
@@ -676,25 +680,25 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                   placeholder="e.g. /auth-verify"
                 />
                 <span className="text-[8px] text-slate-500 block mt-1 leading-normal">
-                  Redirecciona solicitudes a un daemon externo de validación de tokens o cookies.
+                  {t('Redirecciona solicitudes a un daemon externo de validación de tokens o cookies.')}
                 </span>
               </div>
 
               <div className="border-t border-white/5 pt-2 mt-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Mapear Headers de Auth</span>
+                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">{t('Mapear Headers de Auth')}</span>
                   <button
                     type="button"
                     onClick={addForwardHeader}
                     className="nodrag text-[8px] text-emerald-450 hover:text-emerald-300 font-bold transition-colors flex items-center gap-0.5 bg-emerald-400/5 px-1 py-0.5 border border-emerald-400/20 rounded"
                   >
-                    <Plus size={8} /> Añadir
+                    <Plus size={8} /> {t('Añadir')}
                   </button>
                 </div>
 
                 {auth_request_headers_forward.length === 0 ? (
                   <div className="text-[8px] text-slate-600 italic text-center py-1.5 border border-dashed border-white/5 rounded">
-                    Sin mapeos de respuesta definidos
+                    {t('Sin mapeos de respuesta definidos')}
                   </div>
                 ) : (
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
@@ -702,7 +706,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                       <div key={idx} className="flex gap-1 items-center bg-[#121214] border border-white/5 p-1 rounded relative">
                         <div className="grid grid-cols-2 gap-1 flex-grow">
                           <div>
-                            <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">Header Final</span>
+                            <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">{t('Header Final')}</span>
                             <input
                               type="text"
                               className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1.5 py-0.5 text-slate-300 text-[9px] w-full focus:outline-none"
@@ -712,7 +716,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                             />
                           </div>
                           <div>
-                            <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">Var Interna</span>
+                            <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">{t('Var Interna')}</span>
                             <input
                               type="text"
                               className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1.5 py-0.5 text-slate-350 text-[9px] w-full focus:outline-none"
@@ -734,7 +738,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                   </div>
                 )}
                 <span className="text-[8px] text-slate-500 block mt-1 leading-normal">
-                  Pasa variables recibidas de la validación hacia las aplicaciones backend (e.g. auth_request_set).
+                  {t('Pasa variables recibidas de la validación hacia las aplicaciones backend (e.g. auth_request_set).')}
                 </span>
               </div>
             </div>
@@ -751,6 +755,7 @@ interface CustomRewriteEditorProps {
 }
 
 const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = [], onChange }) => {
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
 
   const addRewrite = (e: React.MouseEvent) => {
@@ -798,7 +803,7 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
           className="nodrag flex items-center gap-1.5 font-bold font-mono text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
         >
           {isOpen ? <ChevronUp size={11} className="text-slate-500" /> : <ChevronDown size={11} className="text-slate-500" />}
-          <span>REESCRITURAS URL {rewrites.length > 0 && `(${rewrites.length})`}</span>
+          <span>{t('REESCRITURAS URL')} {rewrites.length > 0 && `(${rewrites.length})`}</span>
         </button>
         {isOpen && (
           <button
@@ -806,7 +811,7 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
             onClick={addRewrite}
             className="nodrag text-[9px] text-emerald-450 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
           >
-            <Plus size={10} /> Añadir
+            <Plus size={10} /> {t('Añadir')}
           </button>
         )}
       </div>
@@ -815,7 +820,7 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
         <div className="space-y-2 mt-2 font-mono">
           {rewrites.length === 0 ? (
             <div className="text-[10px] py-1.5 px-1 text-slate-500 italic border border-dashed border-white/5 bg-[#0A0A0B]/20 rounded text-center">
-              Sin reglas de reescritura.
+              {t('Sin reglas de reescritura.')}
             </div>
           ) : (
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -826,7 +831,7 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
                     r.enabled ? 'bg-[#0A0A0B] border-white/10' : 'bg-[#0A0A0B]/40 border-white/5 opacity-60'
                   }`}>
                     <div className="flex justify-between items-center gap-1">
-                      <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Regla Rewrite</span>
+                      <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{t('Regla Rewrite')}</span>
                       <div className="flex items-center gap-2">
                         <label className="nodrag flex items-center gap-1 cursor-pointer select-none shrink-0 border border-white/5 px-1 py-0.5 rounded bg-[#121214]">
                           <input
@@ -836,13 +841,13 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
                             className="sr-only peer"
                           />
                           <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
-                          <span className="text-[7px] text-slate-400 font-bold">{r.enabled ? 'Activa' : 'Off'}</span>
+                          <span className="text-[7px] text-slate-400 font-bold">{r.enabled ? t('Activa') : 'Off'}</span>
                         </label>
                         <button
                           type="button"
                           onClick={(e) => removeRewrite(e, r.id)}
                           className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1"
-                          title="Eliminar regla"
+                          title={t('Eliminar regla')}
                         >
                           <Trash2 size={11} />
                         </button>
@@ -851,12 +856,12 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
 
                     <div>
                       <div className="flex justify-between items-center mb-0.5">
-                        <span className="text-[7.5px] text-slate-500 font-bold uppercase block">Regex de Origen (Nginx)</span>
+                        <span className="text-[7.5px] text-slate-500 font-bold uppercase block">{t('Regex de Origen (Nginx)')}</span>
                         {r.regex && (
                           <span className={`text-[7px] font-bold px-1 rounded uppercase ${
                             isValid ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'
                           }`}>
-                            {isValid ? '✓ Válida' : '✗ Inválida'}
+                            {isValid ? t('✓ Válida') : t('✗ Inválida')}
                           </span>
                         )}
                       </div>
@@ -877,7 +882,7 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
                     </div>
 
                     <div>
-                      <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">Destino (Replacement)</span>
+                      <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">{t('Destino (Replacement)')}</span>
                       <input
                         type="text"
                         className="nodrag bg-[#121214] border border-white/10 rounded px-1.5 py-0.5 text-slate-300 text-[10px] w-full focus:outline-none focus:border-[#009639]"
@@ -894,11 +899,11 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
                         value={r.flag}
                         onChange={(e) => updateRewrite(r.id, 'flag', e.target.value as any)}
                       >
-                        <option value="last">last (Bucle interno)</option>
-                        <option value="break">break (Termina rewrite)</option>
-                        <option value="redirect">redirect (302 Temporal)</option>
-                        <option value="permanent">permanent (301 Permanente)</option>
-                        <option value="none">none (Reescritura estándar)</option>
+                        <option value="last">{t('last (Bucle interno)')}</option>
+                        <option value="break">{t('break (Termina rewrite)')}</option>
+                        <option value="redirect">{t('redirect (302 Temporal)')}</option>
+                        <option value="permanent">{t('permanent (301 Permanente)')}</option>
+                        <option value="none">{t('none (Reescritura estándar)')}</option>
                       </select>
                     </div>
                   </div>
@@ -951,6 +956,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
   sslActive = false,
   onChange,
 }) => {
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
 
   const addErrorPage = (e: React.MouseEvent) => {
@@ -983,7 +989,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
           className="nodrag flex items-center gap-1.5 font-bold font-mono text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
         >
           {isOpen ? <ChevronUp size={11} className="text-slate-500" /> : <ChevronDown size={11} className="text-slate-500" />}
-          <span>DIRECTIVAS AVANZADAS { (client_max_body_size || ssl_force_redirect || hsts_enabled || cors_enabled || rate_limit_enabled || error_pages.length > 0) && '(*)' }</span>
+          <span>{t('DIRECTIVAS AVANZADAS')} { (client_max_body_size || ssl_force_redirect || hsts_enabled || cors_enabled || rate_limit_enabled || error_pages.length > 0) && '(*)' }</span>
         </button>
       </div>
 
@@ -991,7 +997,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
         <div className="space-y-3 mt-3 font-mono">
           {/* Client Max Body Size */}
           <div className="bg-[#0A0A0B] border border-white/5 p-2 rounded">
-            <span className="text-[8px] text-slate-500 font-bold uppercase block mb-1">Carga Máxima de Archivos (Upload Limit)</span>
+            <span className="text-[8px] text-slate-500 font-bold uppercase block mb-1">{t('Carga Máxima de Archivos (Upload Limit)')}</span>
             <input
               type="text"
               className="nodrag bg-[#121214] border border-white/10 rounded px-1.5 py-0.5 text-slate-200 text-[10px] w-full focus:outline-none focus:border-[#009639]"
@@ -1006,8 +1012,8 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
           {isServer && sslActive && (
             <div className="bg-[#0A0A0B] border border-white/5 p-2 rounded flex items-center justify-between">
               <div className="pr-2">
-                <span className="text-[8px] text-slate-500 font-bold uppercase block">Forzar HTTPS (Puerto 80)</span>
-                <span className="text-[7px] text-slate-600 block leading-tight">Redirige automáticamente todo el tráfico HTTP a HTTPS</span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase block">{t('Forzar HTTPS (Puerto 80)')}</span>
+                <span className="text-[7px] text-slate-600 block leading-tight">{t('Redirige automáticamente todo el tráfico HTTP a HTTPS')}</span>
               </div>
               <label className="nodrag flex items-center gap-1 cursor-pointer select-none shrink-0 border border-white/5 px-1 py-0.5 rounded bg-[#121214]">
                 <input
@@ -1017,7 +1023,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                   className="sr-only peer"
                 />
                 <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
-                <span className="text-[7.5px] text-slate-400 font-bold">{ssl_force_redirect ? 'Sí' : 'No'}</span>
+                <span className="text-[7.5px] text-slate-400 font-bold">{ssl_force_redirect ? t('Sí') : t('No')}</span>
               </label>
             </div>
           )}
@@ -1028,7 +1034,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
               <div className="flex items-center justify-between">
                 <div className="pr-2">
                   <span className="text-[8px] text-slate-500 font-bold uppercase block">HSTS (Strict Transport Security)</span>
-                  <span className="text-[7px] text-slate-600 block leading-tight">Fuerza HTTPS en el navegador durante max-age</span>
+                  <span className="text-[7px] text-slate-600 block leading-tight">{t('Fuerza HTTPS en el navegador durante max-age')}</span>
                 </div>
                 <label className="nodrag flex items-center gap-1 cursor-pointer select-none shrink-0 border border-white/5 px-1 py-0.5 rounded bg-[#121214]">
                   <input
@@ -1044,7 +1050,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
               {hsts_enabled && (
                 <div className="space-y-1.5">
                   <div>
-                    <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">max-age (segundos)</span>
+                    <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">{t('max-age (segundos)')}</span>
                     <input
                       type="number"
                       className="nodrag bg-[#121214] border border-white/10 rounded px-1.5 py-0.5 text-slate-200 text-[9px] w-full focus:outline-none focus:border-[#009639]"
@@ -1083,7 +1089,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
           {/* CORS Header Management */}
           <div className="bg-[#0A0A0B] border border-white/5 p-2 rounded space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[8px] text-slate-500 font-bold uppercase">Soporte CORS (Cross-Origin)</span>
+              <span className="text-[8px] text-slate-500 font-bold uppercase">{t('Soporte CORS (Cross-Origin)')}</span>
               <label className="nodrag flex items-center gap-1 cursor-pointer select-none shrink-0 border border-white/5 px-1 py-0.5 rounded bg-[#121214]">
                 <input
                   type="checkbox"
@@ -1097,13 +1103,13 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
             </div>
             {cors_enabled && (
               <div>
-                <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">Orígenes Permitidos</span>
+                <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">{t('Orígenes Permitidos')}</span>
                 <input
                   type="text"
                   className="nodrag bg-[#121214] border border-white/10 rounded px-1.5 py-0.5 text-slate-200 text-[9px] w-full focus:outline-none focus:border-[#009639]"
                   value={cors_origins}
                   onChange={(e) => onChange('cors_origins', e.target.value)}
-                  placeholder="e.g. * o http://localhost:3000"
+                  placeholder={t('e.g. * o http://localhost:3000')}
                 />
               </div>
             )}
@@ -1112,7 +1118,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
           {/* Rate Limiting */}
           <div className="bg-[#0A0A0B] border border-white/5 p-2 rounded space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[8px] text-slate-500 font-bold uppercase">Límite de Tráfico (Rate Limit)</span>
+              <span className="text-[8px] text-slate-500 font-bold uppercase">{t('Límite de Tráfico (Rate Limit)')}</span>
               <label className="nodrag flex items-center gap-1 cursor-pointer select-none shrink-0 border border-white/5 px-1 py-0.5 rounded bg-[#121214]">
                 <input
                   type="checkbox"
@@ -1121,14 +1127,14 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                   className="sr-only peer"
                 />
                 <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
-                <span className="text-[7.5px] text-slate-400 font-bold">{rate_limit_enabled ? 'Activo' : 'Inactivo'}</span>
+                <span className="text-[7.5px] text-slate-400 font-bold">{rate_limit_enabled ? t('Activo') : t('Inactivo')}</span>
               </label>
             </div>
             {rate_limit_enabled && (
               <div className="space-y-2">
                 {/* Rate */}
                 <div>
-                  <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">Tasa Máxima (rate)</span>
+                  <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">{t('Tasa Máxima (rate)')}</span>
                   <div className="flex gap-1.5">
                     <input
                       type="number"
@@ -1150,7 +1156,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                         onChange('rate_limit_rate', `${num}${e.target.value}`);
                       }}
                     >
-                      <option value="r/s">req/seg</option>
+                      <option value="r/s">{t('req/seg')}</option>
                       <option value="r/m">req/min</option>
                     </select>
                   </div>
@@ -1159,7 +1165,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                 {/* Burst + Nodelay */}
                 <div className="grid grid-cols-2 gap-1.5">
                   <div>
-                    <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">Picos (burst)</span>
+                    <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">{t('Picos (burst)')}</span>
                     <input
                       type="number"
                       className="nodrag bg-[#121214] border border-white/10 rounded px-1.5 py-0.5 text-slate-200 text-[9px] w-full focus:outline-none focus:border-[#009639]"
@@ -1170,7 +1176,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                     />
                   </div>
                   <div>
-                    <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">Sin Retraso</span>
+                    <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">{t('Sin Retraso')}</span>
                     <label className="nodrag flex items-center gap-1 cursor-pointer select-none h-[22px]">
                       <input
                         type="checkbox"
@@ -1186,21 +1192,21 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
 
                 {/* Status Code */}
                 <div>
-                  <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">Código HTTP al rechazar</span>
+                  <span className="text-[7.5px] text-slate-500 font-bold uppercase block mb-0.5">{t('Código HTTP al rechazar')}</span>
                   <select
                     className="nodrag bg-[#121214] border border-white/10 rounded px-1 py-0.5 text-slate-200 text-[9px] w-full focus:outline-none focus:border-[#009639] cursor-pointer"
                     value={rate_limit_status || 503}
                     onChange={(e) => onChange('rate_limit_status', parseInt(e.target.value))}
                   >
-                    <option value={429}>429 — Too Many Requests (recomendado)</option>
+                    <option value={429}>{t('429 — Too Many Requests (recomendado)')}</option>
                     <option value={503}>503 — Service Unavailable (default nginx)</option>
-                    <option value={444}>444 — No Response (cerrar conexión)</option>
+                    <option value={444}>{t('444 — No Response (cerrar conexión)')}</option>
                   </select>
                 </div>
 
                 {/* Preview */}
                 <div className="bg-[#121214] border border-white/5 rounded px-2 py-1.5 font-mono text-[8px] text-emerald-400/70 leading-relaxed">
-                  <div className="text-slate-600 text-[7px] mb-0.5">▸ Directiva generada:</div>
+                  <div className="text-slate-600 text-[7px] mb-0.5">{t('▸ Directiva generada:')}</div>
                   <div>limit_req_zone $binary_remote_addr zone=ip_limit:10m rate={rate_limit_rate || '10r/s'};</div>
                   <div>limit_req zone=ip_limit burst={rate_limit_burst}{rate_limit_nodelay ? ' nodelay' : ''};</div>
                   {(rate_limit_status || 503) !== 503 && <div>limit_req_status {rate_limit_status};</div>}
@@ -1212,19 +1218,19 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
           {/* Custom Error Pages */}
           <div className="bg-[#0A0A0B] border border-white/5 p-2 rounded space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[8px] text-slate-500 font-bold uppercase">Páginas de Error (error_page)</span>
+              <span className="text-[8px] text-slate-500 font-bold uppercase">{t('Páginas de Error (error_page)')}</span>
               <button
                 type="button"
                 onClick={addErrorPage}
                 className="nodrag text-[8px] text-emerald-450 hover:text-emerald-300 font-bold transition-colors flex items-center gap-0.5 bg-emerald-400/5 px-1.5 py-0.5 border border-emerald-400/20 rounded cursor-pointer"
               >
-                <Plus size={9} /> Añadir
+                <Plus size={9} /> {t('Añadir')}
               </button>
             </div>
 
             {error_pages.length === 0 ? (
               <div className="text-[8px] text-slate-650 italic text-center py-1">
-                Sin páginas de error configuradas.
+                {t('Sin páginas de error configuradas.')}
               </div>
             ) : (
               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
@@ -1232,7 +1238,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                   <div key={idx} className="flex gap-1 items-center bg-[#121214] border border-white/5 p-1 rounded relative">
                     <div className="grid grid-cols-3 gap-1 flex-grow">
                       <div className="col-span-1">
-                        <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">Código</span>
+                        <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">{t('Código')}</span>
                         <input
                           type="text"
                           className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1 py-0.5 text-slate-350 text-[9px] w-full focus:outline-none"
@@ -1242,7 +1248,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                         />
                       </div>
                       <div className="col-span-2">
-                        <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">Ruta de Destino</span>
+                        <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">{t('Ruta de Destino')}</span>
                         <input
                           type="text"
                           className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1 py-0.5 text-slate-300 text-[9px] w-full focus:outline-none"
@@ -1297,6 +1303,7 @@ const SSLCertificateSelector: React.FC<SSLCertificateSelectorProps> = ({
   onToggleAdvanced,
   onChange,
 }) => {
+  const { t } = useT();
   const [certs, setCerts] = useState<CertOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
@@ -1394,23 +1401,23 @@ const SSLCertificateSelector: React.FC<SSLCertificateSelectorProps> = ({
           {loading ? (
             <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono py-1">
               <div className="w-3 h-3 border-2 border-slate-600 border-t-emerald-400 rounded-full animate-spin" />
-              Cargando certificados...
+              {t('Cargando certificados...')}
             </div>
           ) : certs.length === 0 ? (
             <div className="flex items-center gap-1.5 text-[10px] text-amber-400/80 font-mono py-1">
               <AlertTriangle size={10} className="shrink-0" />
-              <span>No hay certificados disponibles. Usa el <strong>Cert Manager</strong> para emitir uno o edita las rutas manualmente.</span>
+              <span>{t('No hay certificados disponibles. Usa el')} <strong>Cert Manager</strong> {t('para emitir uno o edita las rutas manualmente.')}</span>
             </div>
           ) : (
             <>
               <div>
-                <span className="block text-slate-500 font-mono text-[10px] mb-1">Seleccionar certificado</span>
+                <span className="block text-slate-500 font-mono text-[10px] mb-1">{t('Seleccionar certificado')}</span>
                 <select
                   className="nodrag w-full bg-[#121214] border border-white/10 rounded px-1.5 py-1.5 text-slate-300 font-mono text-[9px] focus:outline-none focus:border-[#009639] appearance-none cursor-pointer"
                   value={selectedCertName}
                   onChange={(e) => handleSelectCert(e.target.value)}
                 >
-                  <option value="">— Seleccionar certificado —</option>
+                  <option value="">{t('— Seleccionar certificado —')}</option>
                   {certs.map(c => (
                     <option key={c.name} value={c.name}>
                       🔒 {c.name} ({c.domains.slice(0, 2).join(', ')}{c.domains.length > 2 ? ` +${c.domains.length - 2}` : ''}) — {c.daysLeft != null ? `${c.daysLeft}d` : c.valid ? '✓' : '✗'}
@@ -1426,7 +1433,7 @@ const SSLCertificateSelector: React.FC<SSLCertificateSelectorProps> = ({
                     <Lock size={9} className={activeCert.valid ? 'text-emerald-400' : 'text-rose-400'} />
                     <span className="text-[9px] font-bold text-white font-mono">{activeCert.name}</span>
                     <span className={`text-[8px] font-bold font-mono ml-auto ${daysColor(activeCert.daysLeft)}`}>
-                      {activeCert.daysLeft != null ? `${activeCert.daysLeft} días` : activeCert.valid ? 'válido' : 'inválido'}
+                      {activeCert.daysLeft != null ? t('{0} días', activeCert.daysLeft) : activeCert.valid ? t('válido') : t('inválido')}
                     </span>
                   </div>
                   <div className="text-[8px] text-slate-500 font-mono truncate">
@@ -1455,6 +1462,7 @@ const SSLCertificateSelector: React.FC<SSLCertificateSelectorProps> = ({
 };
 
 export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = ({ id, data }) => {
+  const { t } = useT();
   const { activeSiteId, updateNodeData, removeNode } = useTopology();
   const [showSSLAdvanced, setShowSSLAdvanced] = useState(false);
   const { sourcePosition } = useDynamicPositions(id);
@@ -1564,7 +1572,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
           <div className="bg-[#0A0A0B] border border-white/5 p-2 rounded flex items-center justify-between">
             <div className="pr-2">
               <span className="text-[8px] text-slate-500 font-bold uppercase block">HTTP/2</span>
-              <span className="text-[7px] text-slate-600 block leading-tight">Añade `http2` a la directiva listen ssl</span>
+              <span className="text-[7px] text-slate-600 block leading-tight">{t("Añade `http2` a la directiva listen ssl")}</span>
             </div>
             <label className="nodrag flex items-center gap-1 cursor-pointer select-none shrink-0 border border-white/5 px-1 py-0.5 rounded bg-[#121214]">
               <input
@@ -1639,6 +1647,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
 };
 
 export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>>> = ({ id, data }) => {
+  const { t } = useT();
   const { activeSiteId, updateNodeData, removeNode } = useTopology();
   const { sourcePosition, targetPosition } = useDynamicPositions(id);
   const updateNodeInternals = useUpdateNodeInternals();
@@ -1676,7 +1685,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
           <div>
             <h4 className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Routing Location</h4>
             <span className="text-[9px] font-mono font-medium py-0.5 px-1.5 bg-[#0A0A0B] border border-white/5 rounded text-slate-350">
-              Directiva location
+              {t('Directiva location')}
             </span>
           </div>
         </div>
@@ -1805,7 +1814,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                     checked={!!data.proxy_cache_enabled}
                     onChange={(e) => handleChange('proxy_cache_enabled', e.target.checked || undefined)}
                   />
-                  <span className="text-[10px] text-slate-400 font-mono">Cachear respuestas (proxy_cache)</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{t('Cachear respuestas (proxy_cache)')}</span>
                 </label>
                 {data.proxy_cache_enabled && (
                   <div className="pt-1 pl-1">
@@ -1820,7 +1829,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                       placeholder="10m"
                     />
                     <span className="text-[8px] text-slate-500 font-mono leading-tight block pt-0.5">
-                      Añade X-Cache-Status (HIT/MISS). Zona keys_zone auto-generada.
+                      {t('Añade X-Cache-Status (HIT/MISS). Zona keys_zone auto-generada.')}
                     </span>
                   </div>
                 )}
@@ -1838,7 +1847,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                 onChange={(e) => handleChange('root', e.target.value)}
                 placeholder="e.g. /var/www/my-app"
               />
-              <span className="block text-[10px] text-slate-500 font-mono pt-1">try_files (opcional, fallback SPA)</span>
+              <span className="block text-[10px] text-slate-500 font-mono pt-1">{t('try_files (opcional, fallback SPA)')}</span>
               <input
                 type="text"
                 className="nodrag w-full bg-[#121214] border border-white/10 rounded px-2.5 py-1 text-slate-300 font-mono text-xs focus:outline-none focus:border-[#009639]"
@@ -1846,7 +1855,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                 onChange={(e) => handleChange('try_files', e.target.value)}
                 placeholder="$uri $uri/ /index.html"
               />
-              <span className="block text-[10px] text-slate-500 font-mono pt-1">expires (caché de estáticos)</span>
+              <span className="block text-[10px] text-slate-500 font-mono pt-1">{t('expires (caché de estáticos)')}</span>
               <input
                 type="text"
                 className="nodrag w-full bg-[#121214] border border-white/10 rounded px-2.5 py-1 text-slate-300 font-mono text-xs focus:outline-none focus:border-[#009639]"
@@ -1868,9 +1877,9 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                 placeholder="e.g. /var/www/static/"
               />
               <span className="text-[9px] text-slate-500 font-mono leading-tight block pt-1">
-                💡 alias reemplaza la ruta del location (a diferencia de root que la añade).
+                {t('💡 alias reemplaza la ruta del location (a diferencia de root que la añade).')}
               </span>
-              <span className="block text-[10px] text-slate-500 font-mono pt-1">expires (caché de estáticos)</span>
+              <span className="block text-[10px] text-slate-500 font-mono pt-1">{t('expires (caché de estáticos)')}</span>
               <input
                 type="text"
                 className="nodrag w-full bg-[#121214] border border-white/10 rounded px-2.5 py-1 text-slate-300 font-mono text-xs focus:outline-none focus:border-[#009639]"
@@ -1916,7 +1925,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                 className="nodrag w-full bg-[#121214] border border-white/10 rounded px-2.5 py-1 text-slate-300 font-mono text-xs focus:outline-none focus:border-[#009639]"
                 value={data.fastcgi_pass || ''}
                 onChange={(e) => handleChange('fastcgi_pass', e.target.value)}
-                placeholder="e.g. 127.0.0.1:9000 o unix:/run/php/php8.2-fpm.sock"
+                placeholder={t('e.g. 127.0.0.1:9000 o unix:/run/php/php8.2-fpm.sock')}
               />
               <span className="text-[9.5px] text-slate-500 font-mono leading-tight block pt-1">
                 💡 Serves dynamic scripts via CGI socket server (php-fpm).
@@ -1930,7 +1939,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
           <div className="bg-[#0A0A0B] border border-white/5 p-2 rounded flex items-center justify-between">
             <div className="pr-2">
               <span className="text-[8px] text-slate-500 font-bold uppercase block">WebSocket (Upgrade)</span>
-              <span className="text-[7px] text-slate-600 block leading-tight">proxy_http_version 1.1 + cabeceras Upgrade/Connection</span>
+              <span className="text-[7px] text-slate-600 block leading-tight">{t('proxy_http_version 1.1 + cabeceras Upgrade/Connection')}</span>
             </div>
             <label className="nodrag flex items-center gap-1 cursor-pointer select-none shrink-0 border border-white/5 px-1 py-0.5 rounded bg-[#121214]">
               <input
@@ -2494,6 +2503,7 @@ export const GlobalStreamNode: React.FC<NodeProps<Node<any, 'global_stream'>>> =
 };
 
 export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> = ({ id, data }) => {
+  const { t } = useT();
   const { activeSiteId, removeNode, updateNodeData } = useTopology();
 
   const handleChange = (field: string, value: any) => {
@@ -2510,13 +2520,13 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
             <Settings size={16} />
           </div>
           <div className="min-w-0">
-            <h4 className="text-[9px] uppercase font-mono tracking-wider font-bold text-teal-500">Módulo Nginx Dinámico</h4>
+            <h4 className="text-[9px] uppercase font-mono tracking-wider font-bold text-teal-500">{t('Módulo Nginx Dinámico')}</h4>
             <input
               type="text"
               className="nodrag bg-transparent border-0 font-medium text-xs text-white p-0 focus:ring-0 focus:outline-none w-full font-display border-b border-dashed border-white/10 hover:border-white/30 truncate"
               value={data.label || ''}
               onChange={(e) => handleChange('label', e.target.value)}
-              placeholder="Nombre del componente"
+              placeholder={t('Nombre del componente')}
             />
           </div>
         </div>
@@ -2532,39 +2542,39 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
       <div className="space-y-3 text-xs">
         {/* Selector de modulo */}
         <div>
-          <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">Seleccionar API / Módulo</label>
+          <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">{t('Seleccionar API / Módulo')}</label>
           <select
             className="nodrag w-full bg-[#0A0A0B] border border-white/10 rounded h-7 px-1.5 text-slate-200 text-[11px] focus:outline-none focus:border-teal-500 font-mono"
             value={moduleType}
             onChange={(e) => {
               const val = e.target.value as any;
-              let newLabel = 'Módulo';
-              if (val === 'http-lua') newLabel = 'Módulo LUA Scripting';
-              if (val === 'http-geoip') newLabel = 'Módulo GeoIP Geolocalización';
-              if (val === 'http-image-filter') newLabel = 'Filtro de Imágenes (Adaptive)';
-              if (val === 'http-fancyindex') newLabel = 'Indexador Fancyindex';
-              if (val === 'http-echo') newLabel = 'Módulo HTTP Echo Dev';
+              let newLabel = t('Módulo');
+              if (val === 'http-lua') newLabel = t('Módulo LUA Scripting');
+              if (val === 'http-geoip') newLabel = t('Módulo GeoIP Geolocalización');
+              if (val === 'http-image-filter') newLabel = t('Filtro de Imágenes (Adaptive)');
+              if (val === 'http-fancyindex') newLabel = t('Indexador Fancyindex');
+              if (val === 'http-echo') newLabel = t('Módulo HTTP Echo Dev');
               if (val === 'http-headers-more') newLabel = 'Advanced Headers More';
-              if (val === 'custom-directives') newLabel = 'Directivas Configurables';
+              if (val === 'custom-directives') newLabel = t('Directivas Configurables');
               updateNodeData(activeSiteId, id, { moduleType: val, label: newLabel });
             }}
           >
-            <option value="http-lua">ngx_http_lua_module (Scripts Lua)</option>
-            <option value="http-geoip">ngx_http_geoip_module (Geolocalización)</option>
-            <option value="http-image-filter">ngx_http_image_filter_module (Imágenes)</option>
+            <option value="http-lua">{t('ngx_http_lua_module (Scripts Lua)')}</option>
+            <option value="http-geoip">{t('ngx_http_geoip_module (Geolocalización)')}</option>
+            <option value="http-image-filter">{t('ngx_http_image_filter_module (Imágenes)')}</option>
             <option value="http-fancyindex">ngx_http_fancyindex_module (Autoindex Pro)</option>
             <option value="http-echo">ngx_http_echo_module (Dev Debug Echo)</option>
             <option value="http-headers-more">ngx_http_headers_more_filter_module (Mod Headers)</option>
-            <option value="custom-directives">Configuración / Include Personalizado</option>
+            <option value="custom-directives">{t('Configuración / Include Personalizado')}</option>
           </select>
         </div>
 
         {/* Dynamic configurations based on module select */}
         {moduleType === 'custom-directives' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5 text-xs">
-            <span className="block text-[9px] uppercase tracking-wider text-amber-400 font-mono font-bold font-semibold">Directivas Nginx y Directivas de Include</span>
+            <span className="block text-[9px] uppercase tracking-wider text-amber-400 font-mono font-bold font-semibold">{t('Directivas Nginx y Directivas de Include')}</span>
             <div>
-              <label className="block text-[8px] text-slate-500 font-bold uppercase mb-0.5">Configuración Cruda o Incluida</label>
+              <label className="block text-[8px] text-slate-500 font-bold uppercase mb-0.5">{t('Configuración Cruda o Incluida')}</label>
               <textarea
                 className="nodrag w-full h-24 bg-[#121214] text-amber-300 border border-white/10 rounded p-1.5 font-mono text-[10px] leading-normal focus:outline-none focus:border-teal-500"
                 value={data.custom_directives || ''}
@@ -2572,26 +2582,26 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
                 placeholder="e.g. client_body_timeout 10s;&#10;include /etc/nginx/conf.d/*.conf;"
               />
             </div>
-            <p className="text-[8px] text-slate-500 leading-tight">Agrega directivas crudas u includes externos de nginx, que se insertarán en el contexto correspondiente.</p>
+            <p className="text-[8px] text-slate-500 leading-tight">{t('Agrega directivas crudas u includes externos de nginx, que se insertarán en el contexto correspondiente.')}</p>
           </div>
         )}
 
         {moduleType === 'http-lua' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5">
-            <span className="block text-[9px] uppercase tracking-wider text-teal-400 font-mono font-bold font-semibold">Código LUA de Ejecución</span>
+            <span className="block text-[9px] uppercase tracking-wider text-teal-400 font-mono font-bold font-semibold">{t('Código LUA de Ejecución')}</span>
             <textarea
               className="nodrag w-full h-24 bg-[#121214] text-emerald-400 border border-white/10 rounded p-1.5 font-mono text-[10px] leading-relaxed focus:outline-none focus:border-teal-500"
               value={data.lua_code || ''}
               onChange={(e) => handleChange('lua_code', e.target.value)}
               placeholder="ngx.say('Hello from lua!'); ngx.exit(200);"
             />
-            <p className="text-[8px] text-slate-500 leading-tight">Compila en la ubicación conectada como un bloque <code className="bg-[#121214] px-1 rounded text-teal-400 font-mono text-[9px]">content_by_lua_block</code> para interactividad.</p>
+            <p className="text-[8px] text-slate-500 leading-tight">{t('Compila en la ubicación conectada como un bloque')} <code className="bg-[#121214] px-1 rounded text-teal-400 font-mono text-[9px]">content_by_lua_block</code> {t('para interactividad.')}</p>
           </div>
         )}
 
         {moduleType === 'http-geoip' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5 text-xs">
-            <span className="block text-[9px] uppercase tracking-wider text-cyan-400 font-mono font-bold font-semibold">Configuración de Geolocalización</span>
+            <span className="block text-[9px] uppercase tracking-wider text-cyan-400 font-mono font-bold font-semibold">{t('Configuración de Geolocalización')}</span>
             <div>
               <label className="block text-[8px] text-slate-500 font-bold uppercase mb-0.5">Custom Directives</label>
               <textarea
@@ -2601,28 +2611,28 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
                 placeholder="geoip_country /usr/share/GeoIP/GeoIP.dat;"
               />
             </div>
-            <p className="text-[8px] text-slate-500 leading-tight">Agrega detección geográfica cargando la base de datos de GeoIP en caliente.</p>
+            <p className="text-[8px] text-slate-500 leading-tight">{t('Agrega detección geográfica cargando la base de datos de GeoIP en caliente.')}</p>
           </div>
         )}
 
         {moduleType === 'http-image-filter' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5 text-xs">
-            <span className="block text-[9px] uppercase tracking-wider text-pink-400 font-mono font-bold font-semibold">Filtro Adaptativo de Imágenes</span>
+            <span className="block text-[9px] uppercase tracking-wider text-pink-400 font-mono font-bold font-semibold">{t('Filtro Adaptativo de Imágenes')}</span>
             <div className="grid grid-cols-2 gap-1.5">
               <div>
-                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider font-mono">Acción</label>
+                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider font-mono">{t('Acción')}</label>
                 <select
                   className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1 text-slate-200 text-[10px] focus:outline-none"
                   value={data.image_filter_type || 'resize'}
                   onChange={(e) => handleChange('image_filter_type', e.target.value)}
                 >
-                  <option value="resize">Resize (Redimensionar)</option>
-                  <option value="crop">Crop (Recortar)</option>
-                  <option value="rotate">Rotate (Rotar)</option>
+                  <option value="resize">{t('Resize (Redimensionar)')}</option>
+                  <option value="crop">{t('Crop (Recortar)')}</option>
+                  <option value="rotate">{t('Rotate (Rotar)')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider font-mono">Ángulo o Width</label>
+                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider font-mono">{t('Ángulo o Width')}</label>
                 <input
                   type="number"
                   className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1.5 text-slate-200 font-mono text-[10px] focus:outline-none"
@@ -2633,7 +2643,7 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
             </div>
             {data.image_filter_type !== 'rotate' && (
               <div>
-                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Height (Alto en Px)</label>
+                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">{t('Height (Alto en Px)')}</label>
                 <input
                   type="number"
                   className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1.5 text-slate-200 font-mono text-[10px] focus:outline-none"
@@ -2642,13 +2652,13 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
                 />
               </div>
             )}
-            <p className="text-[8px] text-slate-500 leading-tight">Realiza procesamiento de fotos dinámico a nivel de CDN/Proxy.</p>
+            <p className="text-[8px] text-slate-500 leading-tight">{t('Realiza procesamiento de fotos dinámico a nivel de CDN/Proxy.')}</p>
           </div>
         )}
 
         {moduleType === 'http-fancyindex' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5 text-xs">
-            <span className="block text-[9px] uppercase tracking-wider text-amber-500 font-mono font-bold font-semibold">Listador Fancyindex Pro</span>
+            <span className="block text-[9px] uppercase tracking-wider text-amber-500 font-mono font-bold font-semibold">{t('Listador Fancyindex Pro')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="checkbox"
@@ -2657,7 +2667,7 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
                 checked={data.fancyindex_enabled !== false}
                 onChange={(e) => handleChange('fancyindex_enabled', e.target.checked)}
               />
-              <label htmlFor={`fi-${id}`} className="text-slate-300 text-[10px] select-none cursor-pointer">Activar Interfaz Fancyindex</label>
+              <label htmlFor={`fi-${id}`} className="text-slate-300 text-[10px] select-none cursor-pointer">{t('Activar Interfaz Fancyindex')}</label>
             </div>
             <div className="flex items-center gap-1.5">
               <input
@@ -2667,17 +2677,17 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
                 checked={!!data.fancyindex_exact_size}
                 onChange={(e) => handleChange('fancyindex_exact_size', e.target.checked)}
               />
-              <label htmlFor={`fie-${id}`} className="text-slate-300 text-[10px] select-none cursor-pointer">Mostrar Tamaños Exactos</label>
+              <label htmlFor={`fie-${id}`} className="text-slate-300 text-[10px] select-none cursor-pointer">{t('Mostrar Tamaños Exactos')}</label>
             </div>
-            <p className="text-[8px] text-slate-500 leading-tight">Reemplaza el autoindex por defecto con una interfaz HTML interactiva.</p>
+            <p className="text-[8px] text-slate-500 leading-tight">{t('Reemplaza el autoindex por defecto con una interfaz HTML interactiva.')}</p>
           </div>
         )}
 
         {moduleType === 'http-echo' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5 text-xs space-y-1.5">
-            <span className="block text-[9px] uppercase tracking-wider text-violet-400 font-mono font-bold font-semibold">Módulo Echo Debugger</span>
+            <span className="block text-[9px] uppercase tracking-wider text-violet-400 font-mono font-bold font-semibold">{t('Módulo Echo Debugger')}</span>
             <div>
-              <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Respuesta de Texto</label>
+              <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">{t('Respuesta de Texto')}</label>
               <input
                 type="text"
                 className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1.5 text-slate-200 font-mono text-[10px] focus:outline-none"
@@ -2687,7 +2697,7 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
               />
             </div>
             <div>
-              <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Retraso (Segundos)</label>
+              <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">{t('Retraso (Segundos)')}</label>
               <input
                 type="number"
                 className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1.5 text-slate-200 font-mono text-[10px] focus:outline-none"
@@ -2697,27 +2707,27 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
                 min="0"
               />
             </div>
-            <p className="text-[8px] text-slate-500 leading-tight">Permite retornar respuestas simuladas sin servidores backend.</p>
+            <p className="text-[8px] text-slate-500 leading-tight">{t('Permite retornar respuestas simuladas sin servidores backend.')}</p>
           </div>
         )}
 
         {moduleType === 'http-headers-more' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5 text-xs space-y-1.5">
-            <span className="block text-[9px] uppercase tracking-wider text-sky-450 font-mono font-bold font-semibold">Modificador Advanced Headers</span>
+            <span className="block text-[9px] uppercase tracking-wider text-sky-450 font-mono font-bold font-semibold">{t('Modificador Advanced Headers')}</span>
             <div className="grid grid-cols-2 gap-1.5">
               <div>
-                <label className="block text-[8px] text-slate-500 uppercase font-bold">Acción</label>
+                <label className="block text-[8px] text-slate-500 uppercase font-bold">{t('Acción')}</label>
                 <select
                   className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1 text-slate-200 text-[10px] focus:outline-none font-mono"
                   value={data.headers_more_action || 'set'}
                   onChange={(e) => handleChange('headers_more_action', e.target.value)}
                 >
-                  <option value="set">Setear</option>
-                  <option value="clear">Eliminar</option>
+                  <option value="set">{t('Setear')}</option>
+                  <option value="clear">{t('Eliminar')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[8px] text-slate-500 uppercase font-bold">Cabecera</label>
+                <label className="block text-[8px] text-slate-500 uppercase font-bold">{t('Cabecera')}</label>
                 <input
                   type="text"
                   className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1.5 text-slate-200 font-mono text-[10px] focus:outline-none"
@@ -2729,7 +2739,7 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
             </div>
             {data.headers_more_action === 'set' && (
               <div>
-                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Valor Nuevo</label>
+                <label className="block text-[8px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">{t('Valor Nuevo')}</label>
                 <input
                   type="text"
                   className="nodrag w-full bg-[#121214] border border-white/10 rounded h-6 px-1.5 text-slate-200 font-mono text-[10px] focus:outline-none"
@@ -2739,7 +2749,7 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
                 />
               </div>
             )}
-            <p className="text-[8px] text-slate-500 leading-tight">Modifica o elimina cabeceras integradas reemplazando firmas nativas.</p>
+            <p className="text-[8px] text-slate-500 leading-tight">{t('Modifica o elimina cabeceras integradas reemplazando firmas nativas.')}</p>
           </div>
         )}
       </div>
@@ -2763,6 +2773,7 @@ const stripComments = (content: string): string =>
   (content || '').split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
 
 export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id, data }) => {
+  const { t } = useT();
   const { activeSiteId, removeNode, updateNodeData } = useTopology();
 
   const handleChange = (field: string, value: any) => {
@@ -2809,14 +2820,14 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
           </div>
           <div className="min-w-0">
             <h4 className="text-[9px] uppercase font-mono tracking-wider font-bold text-amber-500">
-              Config Cruda ({kind === 'block' ? 'Bloque' : 'Directivas'})
+              {t('Config Cruda')} ({kind === 'block' ? t('Bloque') : t('Directivas')})
             </h4>
             <input
               type="text"
               className="nodrag bg-transparent border-0 font-medium text-xs text-white p-0 focus:ring-0 focus:outline-none w-full font-display border-b border-dashed border-white/10 hover:border-white/30 truncate"
               value={data.label || ''}
               onChange={(e) => handleChange('label', e.target.value)}
-              placeholder="Etiqueta"
+              placeholder={t('Etiqueta')}
             />
           </div>
         </div>
@@ -2824,14 +2835,14 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
           <button
             onClick={openModal}
             className="nodrag text-slate-500 hover:text-amber-400 transition-colors p-1 cursor-pointer"
-            title="Abrir editor (separa comentarios y código)"
+            title={t('Abrir editor (separa comentarios y código)')}
           >
             <Maximize2 size={13} />
           </button>
           <button
             onClick={() => removeNode(activeSiteId, id)}
             className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1 cursor-pointer"
-            title="Eliminar nodo de config cruda"
+            title={t('Eliminar nodo de config cruda')}
           >
             <Trash2 size={13} />
           </button>
@@ -2841,18 +2852,18 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
       <div className="space-y-3 text-xs">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">Tipo</label>
+            <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">{t('Tipo')}</label>
             <select
               className="nodrag w-full bg-[#0A0A0B] border border-white/10 rounded h-7 px-1.5 text-slate-200 text-[11px] focus:outline-none focus:border-amber-500 font-mono"
               value={kind}
               onChange={(e) => handleChange('kind', e.target.value)}
             >
-              <option value="block">Bloque {`{ }`}</option>
-              <option value="directives">Directivas</option>
+              <option value="block">{t('Bloque')} {`{ }`}</option>
+              <option value="directives">{t('Directivas')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">Contexto</label>
+            <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">{t('Contexto')}</label>
             <select
               className="nodrag w-full bg-[#0A0A0B] border border-white/10 rounded h-7 px-1.5 text-slate-200 text-[11px] focus:outline-none focus:border-amber-500 font-mono"
               value={data.context || 'http'}
@@ -2871,7 +2882,7 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
         {kind === 'block' && (
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">Directiva del bloque</label>
+              <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">{t('Directiva del bloque')}</label>
               <input
                 type="text"
                 className="nodrag w-full bg-[#0A0A0B] border border-white/10 rounded h-7 px-1.5 text-amber-300 font-mono text-[11px] focus:outline-none focus:border-amber-500"
@@ -2895,7 +2906,7 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
 
         <div className="space-y-1 bg-[#0A0A0B] p-2.5 rounded border border-white/5">
           <span className="block text-[9px] uppercase tracking-wider text-amber-400 font-mono font-bold">
-            {kind === 'block' ? 'Cuerpo del bloque' : 'Directivas nginx'}
+            {kind === 'block' ? t('Cuerpo del bloque') : t('Directivas nginx')}
           </span>
           <textarea
             className="nodrag w-full h-28 bg-[#121214] text-amber-300 border border-white/10 rounded p-1.5 font-mono text-[10px] leading-normal focus:outline-none focus:border-amber-500"
@@ -2904,13 +2915,13 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
             placeholder={kind === 'block' ? 'default backend1;\nfoo backend2;' : 'add_header X-Custom 1;\nallow all;'}
           />
           <p className="text-[8px] text-slate-500 leading-tight">
-            Config nginx detectada automáticamente. Se reproduce verbatim en el contexto correspondiente.
+            {t('Config nginx detectada automáticamente. Se reproduce verbatim en el contexto correspondiente.')}
           </p>
           <button
             onClick={openModal}
             className="nodrag w-full flex items-center justify-center gap-1.5 mt-1 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-300 rounded text-[9px] font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer"
           >
-            <Maximize2 size={10} /> Abrir editor avanzado
+            <Maximize2 size={10} /> {t('Abrir editor avanzado')}
           </button>
         </div>
       </div>
@@ -2934,17 +2945,17 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-white text-sm font-bold uppercase tracking-wider font-display truncate">
-                    Editor de Config Cruda
+                    {t('Editor de Config Cruda')}
                   </h3>
                   <p className="text-[10px] text-slate-400 truncate">
-                    {data.label || 'Sin etiqueta'} · {kind === 'block' ? `bloque ${data.name || ''}` : 'directivas'} · contexto {data.context || 'http'}
+                    {data.label || t('Sin etiqueta')} · {kind === 'block' ? t('bloque {0}', data.name || '') : t('directivas')} · {t('contexto')} {data.context || 'http'}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setModalOpen(false)}
                 className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-colors shrink-0"
-                title="Cerrar (Esc)"
+                title={t('Cerrar (Esc)')}
               >
                 <X size={16} />
               </button>
@@ -2954,7 +2965,7 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
             {kind === 'block' && (
               <div className="px-4 pt-3 grid grid-cols-2 gap-2 shrink-0">
                 <div>
-                  <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">Directiva del bloque</label>
+                  <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1 font-mono">{t('Directiva del bloque')}</label>
                   <input
                     type="text"
                     className="w-full bg-[#0A0A0B] border border-white/10 rounded h-8 px-2 text-amber-300 font-mono text-[11px] focus:outline-none focus:border-amber-500"
@@ -2981,10 +2992,10 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
               <div className="flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-mono font-bold">
-                    Código (directivas)
+                    {t('Código (directivas)')}
                   </span>
                   <span className="text-[9px] text-slate-500 font-mono">
-                    {codeText ? codeText.split('\n').filter(l => l.trim()).length : 0} líneas
+                    {t('{0} líneas', codeText ? codeText.split('\n').filter(l => l.trim()).length : 0)}
                   </span>
                 </div>
                 <textarea
@@ -3000,16 +3011,16 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
               <div className="flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400 font-mono font-bold">
-                    Comentarios {commentCount > 0 && `(${commentCount})`} <span className="text-slate-600 normal-case font-normal">· solo lectura</span>
+                    {t('Comentarios')} {commentCount > 0 && `(${commentCount})`} <span className="text-slate-600 normal-case font-normal">{t('· solo lectura')}</span>
                   </span>
                   {/* SEC L2: "Limpiar" strips comment lines from the full content (code pane), preserving the rest verbatim. */}
                   <button
                     onClick={() => syncContent(stripComments(codeText))}
                     disabled={!commentsText.trim()}
                     className="flex items-center gap-1 text-[9px] font-mono font-bold text-slate-400 hover:text-rose-300 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-default"
-                    title="Eliminar todos los comentarios"
+                    title={t('Eliminar todos los comentarios')}
                   >
-                    <Eraser size={10} /> Limpiar
+                    <Eraser size={10} /> {t('Limpiar')}
                   </button>
                 </div>
                 {/* SEC L2: read-only derived view of the comment lines — code pane is the editable source of truth. */}
@@ -3018,7 +3029,7 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
                   className="flex-1 min-h-[240px] w-full bg-[#0A0A0B] text-slate-500 border border-white/10 rounded p-2.5 font-mono text-[11px] leading-relaxed focus:outline-none resize-none whitespace-pre cursor-default"
                   value={commentsText}
                   spellCheck={false}
-                  placeholder="# (sin comentarios)"
+                  placeholder={t('# (sin comentarios)')}
                 />
               </div>
             </div>
@@ -3027,13 +3038,13 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
             <div className="p-3 border-t border-white/10 bg-[#0A0A0B] flex items-center justify-between shrink-0">
               <span className="text-[9px] text-slate-500 font-mono leading-tight">
                 {/* SEC L2: code pane is the verbatim source of truth; comments shown read-only for scanning. */}
-                Edita el código directamente; los comentarios se preservan en su orden original. Se reproduce verbatim en contexto <span className="text-amber-400">{data.context || 'http'}</span>.
+                {t('Edita el código directamente; los comentarios se preservan en su orden original. Se reproduce verbatim en contexto')} <span className="text-amber-400">{data.context || 'http'}</span>.
               </span>
               <button
                 onClick={() => setModalOpen(false)}
                 className="px-4 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-200 transition-all rounded text-xs font-bold uppercase cursor-pointer shrink-0"
               >
-                Listo
+                {t('Listo')}
               </button>
             </div>
           </div>

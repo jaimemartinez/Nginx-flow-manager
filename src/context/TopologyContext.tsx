@@ -8,6 +8,7 @@ import { NginxTopologyState, NginxGlobalConfig, NginxSiteConfig, CustomNginxNode
 import { secureFetch } from '../utils/api';
 import { Edge } from '@xyflow/react';
 import { arrangeNodes } from '../utils/layoutSolver';
+import { useT } from '../i18n/i18n';
 
 
 interface TopologyContextType {
@@ -342,6 +343,7 @@ const blankInitialState: NginxTopologyState = {
 };
 
 export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode?: boolean }> = ({ children, offlineMode = false }) => {
+  const { t } = useT();
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
     message: string;
@@ -526,7 +528,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
     const newCommit: NginxCommit = {
       id: commitId,
       timestamp: new Date().toISOString(),
-      message: message || `Configuration sync: Updated virtual topology`,
+      message: message || t('Sincronización de configuración: topología virtual actualizada'),
       author,
       state: JSON.parse(JSON.stringify(state))
     };
@@ -808,7 +810,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
             ]
           };
         } else if (type === 'raw_config') {
-          data = { label: 'Config cruda', kind: 'directives', content: '', context: 'http' };
+          data = { label: t('Config cruda'), kind: 'directives', content: '', context: 'http' };
         }
 
         const newNode: CustomNginxNode = {
@@ -895,7 +897,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
           };
         } else if (type === 'custom_module') {
           data = {
-            label: 'Módulo LUA',
+            label: t('Módulo LUA'),
             moduleType: 'http-lua',
             lua_code: '-- Ejecutar script de Lua\\nngx.say("Hello from Nginx Flow Manager + Lua Module!");\\nngx.exit(200);',
             image_filter_type: 'resize',
@@ -911,7 +913,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
             custom_directives: ''
           };
         } else if (type === 'raw_config') {
-          data = { label: 'Config cruda', kind: 'directives', content: '', context: 'server' };
+          data = { label: t('Config cruda'), kind: 'directives', content: '', context: 'server' };
         } else {
           data = {
             label: 'Load Balancer Cluster',
@@ -1332,21 +1334,22 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
     const rawGlobalNodes: any[] = [];
     const rawGlobalEdges: Edge[] = [];
     const mkRawGlobal = (content: string | undefined, context: 'main' | 'http', parentId: string, label: string) => {
-      const t = (content || '').trim();
-      if (!t) return;
+      // NOTE: do not name a local `t` here — it would shadow the i18n translator from useT().
+      const trimmed = (content || '').trim();
+      if (!trimmed) return;
       const rid = `raw-g-${context}-${Math.random().toString(36).substring(2, 7)}`;
-      rawGlobalNodes.push({ id: rid, type: 'raw_config', position: { x: 0, y: 0 }, data: { label, kind: 'directives', content: t, context } });
+      rawGlobalNodes.push({ id: rid, type: 'raw_config', position: { x: 0, y: 0 }, data: { label, kind: 'directives', content: trimmed, context } });
       rawGlobalEdges.push({ id: `e-${rid}-to-${parentId}`, source: rid, target: parentId, animated: true, style: { strokeWidth: 2, stroke: '#f59e0b' } });
     };
-    mkRawGlobal(importedGlob?.main_custom_directives, 'main', 'global-core', 'Config main (importada)');
-    mkRawGlobal(importedGlob?.custom_directives, 'http', 'global-http', 'Config http (importada)');
+    mkRawGlobal(importedGlob?.main_custom_directives, 'main', 'global-core', t('Config main (importada)'));
+    mkRawGlobal(importedGlob?.custom_directives, 'http', 'global-http', t('Config http (importada)'));
 
     // Stream content not modeled as simple forwards (upstreams, ssl_preread, …) → free-floating
     // raw_config 'stream' node (no parent edge; the compiler emits it inside the stream {} block).
     const streamCustom = (importedGlob?.stream_custom_directives || '').trim();
     if (streamCustom) {
       const sid = `raw-g-stream-${Math.random().toString(36).substring(2, 7)}`;
-      rawGlobalNodes.push({ id: sid, type: 'raw_config', position: { x: 0, y: 0 }, data: { label: 'Config stream (importada)', kind: 'directives', content: streamCustom, context: 'stream' } });
+      rawGlobalNodes.push({ id: sid, type: 'raw_config', position: { x: 0, y: 0 }, data: { label: t('Config stream (importada)'), kind: 'directives', content: streamCustom, context: 'stream' } });
     }
 
     let nextNodes = [...updatedGlobalNodes, ...rawGlobalNodes];
@@ -1436,6 +1439,8 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
     const initScan = async () => {
       setIsInitialImporting(true);
       try {
+        // NOTE: phase literals stay in Spanish on purpose — InitialImportOverlay matches them
+        // by Spanish keywords and translates at render time via t(phase).
         setInitialImportPhase('Conectando con nginx...');
         await new Promise(r => setTimeout(r, 400));
 
@@ -1490,7 +1495,7 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
           // state/candidate = stripped (app-engine generates without raw nginx directives)
           setRunningState(importedTopology);
           setState(stripRawDirectives(importedTopology));
-          setCommits([{ id: 'commit-initial', timestamp: new Date().toISOString(), message: 'Configuración de nginx importada (en producción)', author: 'System', state: JSON.parse(JSON.stringify(importedTopology)) }]);
+          setCommits([{ id: 'commit-initial', timestamp: new Date().toISOString(), message: t('Configuración de nginx importada (en producción)'), author: 'System', state: JSON.parse(JSON.stringify(importedTopology)) }]);
           setRunningCommitId('commit-initial');
           setWorkspaceCommitId('commit-initial');
         }

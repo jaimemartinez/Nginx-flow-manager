@@ -6,9 +6,11 @@
 import React, { useState, useMemo } from 'react';
 import { useTopology } from '../context/TopologyContext';
 import { History, GitCommit, User, Clock, RotateCcw, AlertTriangle, CheckCircle2, ScrollText } from 'lucide-react';
+import { useT } from '../i18n/i18n';
 
 export const VersionManager: React.FC = () => {
-  const { 
+  const { lang, t } = useT();
+  const {
     state, 
     runningState, 
     commits, 
@@ -102,15 +104,15 @@ export const VersionManager: React.FC = () => {
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       
-      if (diffMins < 1) return 'Hace unos segundos';
-      if (diffMins === 1) return 'Hace 1 minuto';
-      if (diffMins < 60) return `Hace ${diffMins} minutos`;
-      
+      if (diffMins < 1) return t('Hace unos segundos');
+      if (diffMins === 1) return t('Hace 1 minuto');
+      if (diffMins < 60) return t('Hace {0} minutos', diffMins);
+
       const diffHours = Math.floor(diffMins / 60);
-      if (diffHours === 1) return 'Hace 1 hora';
-      if (diffHours < 24) return `Hace ${diffHours} horas`;
-      
-      return date.toLocaleDateString('es-ES', {
+      if (diffHours === 1) return t('Hace 1 hora');
+      if (diffHours < 24) return t('Hace {0} horas', diffHours);
+
+      return date.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', {
         day: '2-digit',
         month: 'short',
         hour: '2-digit',
@@ -129,31 +131,31 @@ export const VersionManager: React.FC = () => {
           <History size={16} />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider font-display">Manejo de Versiones</h2>
+          <h2 className="text-sm font-bold text-white uppercase tracking-wider font-display">{t('Manejo de Versiones')}</h2>
           <p className="text-[10px] text-slate-400">Candidate & Running Configuration Engine</p>
         </div>
       </div>
 
       {/* Configuration Status Summary */}
       <div className="space-y-3">
-        <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Estado Actual</label>
+        <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">{t('Estado Actual')}</label>
         
         {hasChanges ? (
           <div className="bg-amber-500/5 border border-amber-500/20 rounded p-3 space-y-2">
             <div className="flex items-center gap-2 text-amber-400 text-xs font-bold font-mono">
               <AlertTriangle size={14} className="animate-pulse" />
-              <span>CANDIDATE TIENE CAMBIOS</span>
+              <span>{t('CANDIDATE TIENE CAMBIOS')}</span>
             </div>
             <p className="text-[10.5px] text-slate-400 leading-normal font-sans">
-              Los cambios en el mapa de topología o parámetros aún no se han aplicado a la configuración de ejecución (Running).
+              {t('Los cambios en el mapa de topología o parámetros aún no se han aplicado a la configuración de ejecución (Running).')}
             </p>
-            
+
             <div className="text-[9.5px] font-mono text-amber-300/80 bg-black/30 p-2 rounded border border-amber-500/5 space-y-1">
               {differencesCount.sitesChanged > 0 && (
-                <div>• {differencesCount.sitesChanged} sitio(s) virtual(es) creado(s) o modificado(s)</div>
+                <div>{t('• {0} sitio(s) virtual(es) creado(s) o modificado(s)', differencesCount.sitesChanged)}</div>
               )}
               {differencesCount.globalChanged && (
-                <div>• Cambios en Directivas HTTP Globales / Sockets Stream L4</div>
+                <div>{t('• Cambios en Directivas HTTP Globales / Sockets Stream L4')}</div>
               )}
             </div>
 
@@ -162,8 +164,8 @@ export const VersionManager: React.FC = () => {
                 type="button"
                 onClick={() => {
                   askConfirmation(
-                    'Descartar Modificaciones',
-                    '¿Estás seguro de que deseas descartar todas las modificaciones de borrador? Esta acción no se puede deshacer.',
+                    t('Descartar Modificaciones'),
+                    t('¿Estás seguro de que deseas descartar todas las modificaciones de borrador? Esta acción no se puede deshacer.'),
                     () => {
                       discardCandidateChanges();
                     }
@@ -172,7 +174,7 @@ export const VersionManager: React.FC = () => {
                 className="w-full py-1.5 bg-white/5 hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/20 text-slate-350 hover:text-rose-400 rounded text-[10px] font-bold uppercase cursor-pointer transition-all flex items-center justify-center gap-1"
               >
                 <RotateCcw size={10} />
-                Descartar
+                {t('Descartar')}
               </button>
               <button
                 type="button"
@@ -182,7 +184,7 @@ export const VersionManager: React.FC = () => {
                 className="w-full py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded text-[10px] font-bold uppercase cursor-pointer transition-all flex items-center justify-center gap-1"
               >
                 <GitCommit size={10} />
-                Hacer Commit
+                {t('Hacer Commit')}
               </button>
             </div>
           </div>
@@ -190,9 +192,9 @@ export const VersionManager: React.FC = () => {
           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded p-3.5 flex gap-2.5 items-start">
             <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0 mt-0.5" />
             <div className="space-y-1 font-sans">
-              <span className="font-bold text-xs text-white block">Sincronizado</span>
+              <span className="font-bold text-xs text-white block">{t('Sincronizado')}</span>
               <p className="text-[10px] text-slate-400 leading-normal">
-                El borrador de diseño local (Candidate) coincide exactamente con la configuración operativa del servidor (Running). 100% Sincronizado.
+                {t('El borrador de diseño local (Candidate) coincide exactamente con la configuración operativa del servidor (Running). 100% Sincronizado.')}
               </p>
             </div>
           </div>
@@ -201,16 +203,16 @@ export const VersionManager: React.FC = () => {
 
       {successAnim && (
         <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded p-2.5 text-[10.5px] font-bold text-center animate-bounce">
-          🎉 ¡Configuración guardada y aplicada como versión Running activa!
+          {t('🎉 ¡Configuración guardada y aplicada como versión Running activa!')}
         </div>
       )}
 
       {/* History of Version Commits */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Historial de Confirmaciones</label>
+          <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">{t('Historial de Confirmaciones')}</label>
           <span className="text-[9px] font-bold text-slate-500 bg-white/5 px-2 py-0.5 rounded border border-white/5 font-mono">
-            {commits.length} {commits.length === 1 ? 'Versión' : 'Versiones'}
+            {commits.length} {commits.length === 1 ? t('Versión') : t('Versiones')}
           </span>
         </div>
 
@@ -256,7 +258,7 @@ export const VersionManager: React.FC = () => {
                             </span>
                           ) : (
                             <span className="bg-amber-500/10 text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/20 uppercase">
-                              workspace (modificado)
+                              {t('workspace (modificado)')}
                             </span>
                           )
                         )}
@@ -282,51 +284,51 @@ export const VersionManager: React.FC = () => {
                       window.dispatchEvent(new CustomEvent('nginx-flow-view-commit', { detail: commit }));
                     }}
                     className="px-2.5 py-1 bg-sky-500/5 hover:bg-sky-500/15 text-slate-400 hover:text-sky-405 border border-white/10 hover:border-sky-500/20 rounded text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                    title="Inspeccionar archivos y diff de esta versión sin cambiar tu borrador"
+                    title={t('Inspeccionar archivos y diff de esta versión sin cambiar tu borrador')}
                   >
                     <ScrollText size={9} />
-                    Ver Config / Diff
+                    {t('Ver Config / Diff')}
                   </button>
 
                   {isCurrentWorkspaceBase ? (
                     isExactlyMatchingWorkspace ? (
                       <span className="text-[10px] text-emerald-400 italic bg-emerald-500/5 px-2.5 py-0.5 rounded border border-emerald-500/10 font-semibold select-none flex items-center gap-1">
-                        ✓ Sincronizado con Lienzo
+                        {t('✓ Sincronizado con Lienzo')}
                       </span>
                     ) : (
                       <button
                         onClick={() => {
                           askConfirmation(
-                            'Revertir Cambios',
-                            `¿Estás seguro de que deseas revertir todas tus modificaciones de borrador actuales y restaurar la versión original de "${commit.message}"?`,
+                            t('Revertir Cambios'),
+                            t('¿Estás seguro de que deseas revertir todas tus modificaciones de borrador actuales y restaurar la versión original de "{0}"?', commit.message),
                             () => {
                               restoreCommit(commit.id);
                             }
                           );
                         }}
                         className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/20 rounded text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                        title="Descartar cambios en borrador y volver al estado original de este commit"
+                        title={t('Descartar cambios en borrador y volver al estado original de este commit')}
                       >
                         <RotateCcw size={9} />
-                        Revertir a esta Versión
+                        {t('Revertir a esta Versión')}
                       </button>
                     )
                   ) : (
                     <button
                       onClick={() => {
                         askConfirmation(
-                          'Cargar Historial',
-                          `¿Estás seguro de que deseas cargar el estado de "${commit.message}" en tu borrador (Candidate)?`,
+                          t('Cargar Historial'),
+                          t('¿Estás seguro de que deseas cargar el estado de "{0}" en tu borrador (Candidate)?', commit.message),
                           () => {
                             restoreCommit(commit.id);
                           }
                         );
                       }}
                       className="px-2.5 py-1 bg-white/5 hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-400 border border-white/10 hover:border-emerald-500/20 rounded text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                      title="Copiar snapshot seleccionado al lienzo borrador"
+                      title={t('Copiar snapshot seleccionado al lienzo borrador')}
                     >
                       <RotateCcw size={9} />
-                      Cargar en Borrador
+                      {t('Cargar en Borrador')}
                     </button>
                   )}
                 </div>

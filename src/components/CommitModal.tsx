@@ -22,6 +22,7 @@ import {
   RotateCcw 
 } from 'lucide-react';
 import { compileNginxTopology, simulateSymlinksReconciliation } from '../utils/nginxCompiler';
+import { useT } from '../i18n/i18n';
 
 interface CommitModalProps {
   isOpen: boolean;
@@ -29,7 +30,8 @@ interface CommitModalProps {
 }
 
 export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => {
-  const { 
+  const { t, lang } = useT();
+  const {
     state, 
     runningState, 
     commitConfig, 
@@ -116,15 +118,15 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
       });
       const data = await response.json();
       if (data.success) {
-        setModuleActionMessage({ text: `Módulo ${packageName} instalado con éxito.`, type: 'success' });
+        setModuleActionMessage({ text: t('Módulo {0} instalado con éxito.', packageName), type: 'success' });
         await fetchNginxStatus();
         // Trigger validation check again automatically after module install
         runValidationCheck();
       } else {
-        setModuleActionMessage({ text: `Error: ${data.error || 'No se pudo instalar'}`, type: 'error' });
+        setModuleActionMessage({ text: t('Error: {0}', t(data.error || 'No se pudo instalar')), type: 'error' });
       }
     } catch (err: any) {
-      setModuleActionMessage({ text: `Error de red: ${err.message}`, type: 'error' });
+      setModuleActionMessage({ text: t('Error de red: {0}', err.message), type: 'error' });
     } finally {
       setLoaderMap(prev => ({ ...prev, [packageName]: false }));
     }
@@ -152,7 +154,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
       const contentType = response.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
         const errText = await response.text();
-        throw new Error(errText || `Error de validación (Status ${response.status})`);
+        throw new Error(errText || t('Error de validación (Status {0})', response.status));
       }
 
       const data = await response.json();
@@ -176,7 +178,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
     } catch (err: any) {
       setValidationResult({
         status: 'error',
-        message: err.message || 'Error de conexión con el servicio de validación de Nginx',
+        message: err.message || t('Error de conexión con el servicio de validación de Nginx'),
       });
       return false;
     } finally {
@@ -277,28 +279,28 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
 
     const initialSteps = [
       {
-        label: 'Compilación de Topología',
-        description: 'Construyendo archivos virtuales de configuración',
+        label: t('Compilación de Topología'),
+        description: t('Construyendo archivos virtuales de configuración'),
         status: 'idle' as const,
-        details: 'Generando etc/nginx/nginx.conf y sites vhosts...'
+        details: t('Generando etc/nginx/nginx.conf y sites vhosts...')
       },
       {
-        label: 'Confirmación en Sandbox (Nginx Real)',
-        description: 'Invocando "nginx -t" sobre el vhost y stream real modular',
+        label: t('Confirmación en Sandbox (Nginx Real)'),
+        description: t('Invocando "nginx -t" sobre el vhost y stream real modular'),
         status: 'idle' as const,
-        details: 'Esperando respuesta del sandbox... '
+        details: t('Esperando respuesta del sandbox... ')
       },
       {
-        label: 'Registro Seguro (Commit)',
-        description: 'Salvando el snapshot en el historial cronológico local',
+        label: t('Registro Seguro (Commit)'),
+        description: t('Salvando el snapshot en el historial cronológico local'),
         status: 'idle' as const,
-        details: 'Insertando nodo de versión en el ledger...'
+        details: t('Insertando nodo de versión en el ledger...')
       },
       {
-        label: 'Sincronización de Ejecución',
-        description: 'Aplicando topología al estado operacional activo (Running)',
+        label: t('Sincronización de Ejecución'),
+        description: t('Aplicando topología al estado operacional activo (Running)'),
         status: 'idle' as const,
-        details: 'Completando despliegue seguro...'
+        details: t('Completando despliegue seguro...')
       }
     ];
 
@@ -311,7 +313,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
       // Paso 1: Compilación de la Topología
       setModalSteps(prev => {
         const next = [...prev];
-        next[0] = { ...next[0], status: 'running', details: 'Generando mapas de directivas y sitios...' };
+        next[0] = { ...next[0], status: 'running', details: t('Generando mapas de directivas y sitios...') };
         return next;
       });
       await delay(700);
@@ -325,9 +327,9 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
         next[0] = {
           ...next[0],
           status: 'success',
-          details: `¡Estructurado con éxito! Se crearon ${filesCount} archivos virtuales.`
+          details: t('¡Estructurado con éxito! Se crearon {0} archivos virtuales.', filesCount)
         };
-        next[1] = { ...next[1], status: 'running', details: 'Validando sintaxis con Nginx real...' };
+        next[1] = { ...next[1], status: 'running', details: t('Validando sintaxis con Nginx real...') };
         return next;
       });
       setActiveCommitStepIndex(1);
@@ -348,7 +350,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
       const contentType = response.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
         const errText = await response.text();
-        throw new Error(errText || `Error de validación (Status ${response.status})`);
+        throw new Error(errText || t('Error de validación (Status {0})', response.status));
       }
 
       const data = await response.json();
@@ -366,7 +368,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
           next[1] = {
             ...next[1],
             status: 'failed',
-            details: 'La comprobación de sintaxis de Nginx falló.'
+            details: t('La comprobación de sintaxis de Nginx falló.')
           };
           return next;
         });
@@ -384,9 +386,9 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
         next[1] = {
           ...next[1],
           status: 'success',
-          details: '¡Sintaxis compatible con Nginx!'
+          details: t('¡Sintaxis compatible con Nginx!')
         };
-        next[2] = { ...next[2], status: 'running', details: `Escribiendo versión: "${cleanMessage}"...` };
+        next[2] = { ...next[2], status: 'running', details: t('Escribiendo versión: "{0}"...', cleanMessage) };
         return next;
       });
       setActiveCommitStepIndex(2);
@@ -400,9 +402,9 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
         next[2] = {
           ...next[2],
           status: 'success',
-          details: `Versión inmutable guardada por '${authorName}'.`
+          details: t("Versión inmutable guardada por '{0}'.", authorName)
         };
-        next[3] = { ...next[3], status: 'running', details: 'Aplicando configuración y recargando Nginx...' };
+        next[3] = { ...next[3], status: 'running', details: t('Aplicando configuración y recargando Nginx...') };
         return next;
       });
       setActiveCommitStepIndex(3);
@@ -422,7 +424,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
       const deployContentType = deployRes.headers.get("content-type") || "";
       if (!deployContentType.includes("application/json")) {
         const errText = await deployRes.text();
-        throw new Error(errText || `Error de despliegue (Status ${deployRes.status})`);
+        throw new Error(errText || t('Error de despliegue (Status {0})', deployRes.status));
       }
 
       const deployData = await deployRes.json();
@@ -433,14 +435,14 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
           next[3] = {
             ...next[3],
             status: 'failed',
-            details: deployData.error || 'Error recargando Nginx.'
+            details: t(deployData.error || 'Error recargando Nginx.')
           };
           return next;
         });
 
         setValidationResult({
           status: 'error',
-          message: deployData.error || 'Fallo en la recarga del proceso Nginx.',
+          message: deployData.error || t('Fallo en la recarga del proceso Nginx.'),
           stdout: deployData.stdout,
           stderr: deployData.stderr,
         });
@@ -452,7 +454,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
         next[3] = {
           ...next[3],
           status: 'success',
-          details: '¡Nginx recargado con éxito!'
+          details: t('¡Nginx recargado con éxito!')
         };
         return next;
       });
@@ -466,7 +468,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
           next[activeIdx] = {
             ...next[activeIdx],
             status: 'failed',
-            details: err.message || 'Error inesperado.'
+            details: t(err.message || 'Error inesperado.')
           };
         }
         return next;
@@ -490,15 +492,15 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
               <div className="flex items-center gap-2">
                 <GitCommit size={18} className="text-[#009639]" />
                 <div>
-                  <h3 className="text-white text-sm font-bold uppercase tracking-wider font-display">Confirmar & Desplegar Cambios</h3>
-                  <p className="text-[10px] text-slate-400">Valida la sintaxis del código de Nginx y guarda una versión de tu topología</p>
+                  <h3 className="text-white text-sm font-bold uppercase tracking-wider font-display">{t('Confirmar & Desplegar Cambios')}</h3>
+                  <p className="text-[10px] text-slate-400">{t('Valida la sintaxis del código de Nginx y guarda una versión de tu topología')}</p>
                 </div>
               </div>
               <button 
                 type="button"
                 onClick={onClose}
                 className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-colors"
-                title="Cerrar"
+                title={t('Cerrar')}
               >
                 <X size={16} />
               </button>
@@ -511,7 +513,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
               <div className="col-span-12 lg:col-span-7 p-5 space-y-4 overflow-y-auto max-h-[65vh] lg:max-h-[70vh]">
                 <div className="flex items-center justify-between">
                   <span className="block text-[10px] text-sky-400 uppercase font-bold tracking-wider font-mono flex items-center gap-1">
-                    Diagnóstico de Sintaxis Nginx
+                    {t('Diagnóstico de Sintaxis Nginx')}
                   </span>
                   <button
                     type="button"
@@ -522,12 +524,12 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                     {isValidating ? (
                       <>
                         <Loader2 size={10} className="animate-spin" />
-                        Validando...
+                        {t('Validando...')}
                       </>
                     ) : (
                       <>
                         <RotateCcw size={10} />
-                        Revalidar
+                        {t('Revalidar')}
                       </>
                     )}
                   </button>
@@ -537,7 +539,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                 {isValidating ? (
                   <div className="p-8 text-center space-y-3 bg-[#0A0A0B] border border-white/5 rounded-lg">
                     <Loader2 size={24} className="animate-spin text-sky-400 mx-auto" />
-                    <p className="text-xs text-slate-350 font-mono">Ejecutando validación aislada en el servidor...</p>
+                    <p className="text-xs text-slate-350 font-mono">{t('Ejecutando validación aislada en el servidor...')}</p>
                   </div>
                 ) : validationResult ? (
                   <div className={`p-4 rounded-lg border text-xs space-y-2.5 leading-relaxed ${
@@ -552,20 +554,20 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                         <ShieldAlert size={16} className="text-rose-400" />
                       )}
                       {validationSuccess ? (
-                        <span>✓ SINTAXIS TOTALMENTE CORRECTA</span>
+                        <span>{t('✓ SINTAXIS TOTALMENTE CORRECTA')}</span>
                       ) : (
-                        <span>⚠️ SINTAXIS NGINX ERRÓNEA</span>
+                        <span>{t('⚠️ SINTAXIS NGINX ERRÓNEA')}</span>
                       )}
                     </div>
 
                     {(validationResult.stderr || validationResult.stdout || validationResult.message) && (
                       <div className="border border-white/5 rounded overflow-hidden">
                         <div className="bg-black/40 px-3 py-1.5 border-b border-white/5 text-[9px] text-slate-500 font-mono">
-                          LOGS DE ERROR DE NGINX -T
+                          {t('LOGS DE ERROR DE NGINX -T')}
                         </div>
                         <pre className="text-[9.5px] leading-normal font-mono bg-black/60 p-3 overflow-x-auto max-h-40 whitespace-pre-wrap select-text text-slate-300">
                           {(() => {
-                            const rawLog = validationResult.stderr || validationResult.stdout || validationResult.message || '';
+                            const rawLog = validationResult.stderr || validationResult.stdout || (validationResult.message ? t(validationResult.message) : '');
                             return rawLog.replace(/\/tmp\/nginx-sandbox-[a-z0-9-]+\/(etc\/nginx\/)?/gi, '/etc/nginx/');
                           })()}
                         </pre>
@@ -578,7 +580,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                 {nginxOSStatus && (
                   <div className="bg-[#0A0A0B] border border-white/5 rounded-lg p-4 space-y-3">
                     <span className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider font-mono">
-                      Estado del Servidor Nginx
+                      {t('Estado del Servidor Nginx')}
                     </span>
                     
                     <div className="bg-[#121214] border border-white/5 rounded p-3 space-y-2 font-mono text-[9px] text-slate-350">
@@ -586,17 +588,17 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                         <span className="text-slate-500 font-bold uppercase">Daemon OS:</span>
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                          INSTALADO Y RUNNING
+                          {t('INSTALADO Y RUNNING')}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Versión:</span>
+                        <span className="text-slate-500">{t('Versión:')}</span>
                         <span className="text-slate-300 font-mono text-[8.5px] truncate max-w-[220px]">
-                          {nginxOSStatus.version.replace("nginx version: ", "") || "Nginx 1.22.1"}
+                          {t(nginxOSStatus.version.replace("nginx version: ", "")) || "Nginx 1.22.1"}
                         </span>
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-slate-500 mb-1">Módulos Habilitados:</span>
+                        <span className="text-slate-500 mb-1">{t('Módulos Habilitados:')}</span>
                         <div className="flex flex-wrap gap-1">
                           {nginxOSStatus.modules.length > 0 ? (
                             nginxOSStatus.modules.map(mod => (
@@ -605,7 +607,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                               </span>
                             ))
                           ) : (
-                            <span className="text-slate-600 italic">Ninguno</span>
+                            <span className="text-slate-600 italic">{t('Ninguno')}</span>
                           )}
                         </div>
                       </div>
@@ -613,7 +615,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                       {/* Hot Module Installer */}
                       <div className="border-t border-white/5 pt-3 mt-3 space-y-2.5">
                         <span className="text-slate-500 font-bold uppercase block text-[8px] tracking-wider">
-                          Instalar Módulos en Caliente:
+                          {t('Instalar Módulos en Caliente:')}
                         </span>
                         
                         {moduleActionMessage && (
@@ -675,15 +677,15 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                       <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3.5 space-y-2">
                         <div className="flex items-center gap-2 text-amber-400 text-xs font-bold font-mono">
                           <AlertTriangle size={14} className="animate-pulse" />
-                          <span>Borrador con Cambios</span>
+                          <span>{t('Borrador con Cambios')}</span>
                         </div>
                         
                         <div className="text-[10px] font-mono text-amber-300/80 bg-black/30 p-2.5 rounded border border-amber-500/5 space-y-1">
                           {differencesCount.sitesChanged > 0 && (
-                            <div>• {differencesCount.sitesChanged} sitio(s) virtual(es) creado(s) o modificado(s)</div>
+                            <div>{t('• {0} sitio(s) virtual(es) creado(s) o modificado(s)', differencesCount.sitesChanged)}</div>
                           )}
                           {differencesCount.globalChanged && (
-                            <div>• Cambios en HTTP Globals / Sockets Stream L4</div>
+                            <div>{t('• Cambios en HTTP Globals / Sockets Stream L4')}</div>
                           )}
                         </div>
                       </div>
@@ -691,14 +693,14 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                       {/* Commit message input */}
                       <div className="space-y-1 text-xs">
                         <label htmlFor="commit-msg-modal-input" className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-                          Mensaje del Cambio
+                          {t('Mensaje del Cambio')}
                         </label>
                         <input
                           id="commit-msg-modal-input"
                           type="text"
                           required
                           className="w-full bg-[#121214] border border-white/10 rounded px-3 py-2 text-slate-100 font-sans focus:outline-none focus:border-[#009639] transition-all text-xs"
-                          placeholder="Ej. Habilitar gzip y proxy API"
+                          placeholder={t('Ej. Habilitar gzip y proxy API')}
                           value={commitMessage}
                           onChange={(e) => setCommitMessage(e.target.value)}
                         />
@@ -706,7 +708,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
 
                       {/* Author Name input */}
                       <div className="space-y-1 text-xs">
-                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Operador</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t('Operador')}</span>
                         <div className="relative">
                           <input
                             type="text"
@@ -724,7 +726,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                     <div className="space-y-2 pt-4">
                       {validationError && (
                         <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] text-center font-semibold leading-normal">
-                          ⚠️ No se puede desplegar: la sintaxis de Nginx es inválida.
+                          {t('⚠️ No se puede desplegar: la sintaxis de Nginx es inválida.')}
                         </div>
                       )}
                       
@@ -734,7 +736,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                         className="w-full py-2 bg-[#009639] hover:bg-[#007b2e] disabled:bg-slate-800 disabled:text-slate-500 border border-[#009639]/30 text-white transition-all rounded text-xs font-bold uppercase cursor-pointer flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:border-transparent"
                       >
                         <GitCommit size={14} />
-                        Commit & Deploy a Running
+                        {t('Commit & Deploy a Running')}
                       </button>
                     </div>
                   </form>
@@ -745,18 +747,18 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                       <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3.5 space-y-2">
                         <div className="flex items-center gap-2 text-emerald-450 text-xs font-bold font-mono">
                           <CheckCircle2 size={14} className="text-emerald-400" />
-                          <span>Borrador Sincronizado</span>
+                          <span>{t('Borrador Sincronizado')}</span>
                         </div>
                         
                         <div className="text-[10px] font-mono text-emerald-350/90 bg-black/30 p-2.5 rounded border border-emerald-500/5">
-                          • No hay cambios pendientes por confirmar en el borrador local.
+                          {t('• No hay cambios pendientes por confirmar en el borrador local.')}
                         </div>
                       </div>
 
                       {/* Active running version card */}
                       <div className="bg-[#121214] border border-white/5 rounded-lg p-3.5 space-y-2.5">
                         <span className="block text-[10px] text-slate-550 uppercase font-bold tracking-wider font-mono">
-                          Versión Activa en Servidor
+                          {t('Versión Activa en Servidor')}
                         </span>
 
                         {runningCommit ? (
@@ -766,10 +768,10 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-400 font-mono">
                               <div>
-                                <span className="text-slate-550">Operador:</span> {runningCommit.author}
+                                <span className="text-slate-550">{t('Operador:')}</span> {runningCommit.author}
                               </div>
                               <div>
-                                <span className="text-slate-550">Desplegado:</span> {new Date(runningCommit.timestamp).toLocaleString('es-ES', {
+                                <span className="text-slate-550">{t('Desplegado:')}</span> {new Date(runningCommit.timestamp).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', {
                                   day: '2-digit',
                                   month: 'short',
                                   hour: '2-digit',
@@ -779,14 +781,14 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                             </div>
                           </div>
                         ) : (
-                          <p className="text-[10px] text-slate-550 italic">No hay registros de versiones cargadas.</p>
+                          <p className="text-[10px] text-slate-550 italic">{t('No hay registros de versiones cargadas.')}</p>
                         )}
                       </div>
                     </div>
 
                     <div className="bg-[#121214] border border-white/5 rounded-lg p-3 text-center space-y-1">
                       <p className="text-[10.5px] text-slate-400 leading-normal">
-                        Para habilitar un nuevo commit, realiza cambios sobre el lienzo del **Editor visual** o la sección **Globals**.
+                        {t('Para habilitar un nuevo commit, realiza cambios sobre el lienzo del **Editor visual** o la sección **Globals**.')}
                       </p>
                     </div>
                   </div>
@@ -802,7 +804,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                 onClick={onClose}
                 className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-350 hover:text-white transition-all rounded text-xs font-bold uppercase cursor-pointer"
               >
-                Cerrar
+                {t('Cerrar')}
               </button>
             </div>
           </div>
@@ -814,14 +816,14 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
               <div className="flex items-center gap-2">
                 <GitCommit size={18} className="text-emerald-400 animate-pulse" />
                 <div>
-                  <h3 className="text-white text-sm font-bold uppercase tracking-wider font-display">Operación Commit & Deploy</h3>
-                  <p className="text-[10px] text-slate-400">Verificando y aplicando directivas en tiempo real</p>
+                  <h3 className="text-white text-sm font-bold uppercase tracking-wider font-display">{t('Operación Commit & Deploy')}</h3>
+                  <p className="text-[10px] text-slate-400">{t('Verificando y aplicando directivas en tiempo real')}</p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
                 className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-colors"
-                title="Cerrar"
+                title={t('Cerrar')}
               >
                 <X size={16} />
               </button>
@@ -890,10 +892,10 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                             {step.label}
                           </span>
                           <span className="text-[9px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded">
-                            {isSuccess && <span className="text-emerald-400">Completado</span>}
-                            {isFailed && <span className="text-rose-450 font-bold">Fallido</span>}
-                            {isRunning && <span className="text-sky-400 animate-pulse">Procesándolo</span>}
-                            {isIdle && <span className="text-slate-600">En espera</span>}
+                            {isSuccess && <span className="text-emerald-400">{t('Completado')}</span>}
+                            {isFailed && <span className="text-rose-450 font-bold">{t('Fallido')}</span>}
+                            {isRunning && <span className="text-sky-400 animate-pulse">{t('Procesándolo')}</span>}
+                            {isIdle && <span className="text-slate-600">{t('En espera')}</span>}
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-sans leading-normal">{step.description}</p>
@@ -924,15 +926,15 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                   <div className="bg-[#1C1214] border-b border-rose-500/10 px-3 py-2 flex items-center justify-between text-xs text-rose-400 font-mono">
                     <span className="flex items-center gap-1.5">
                       <Terminal size={11} />
-                      Log de Consola de Diagnóstico Nginx
+                      {t('Log de Consola de Diagnóstico Nginx')}
                     </span>
                     <span className="bg-rose-500/10 px-2 py-0.5 text-[9px] rounded font-bold uppercase tracking-wider">
-                      Sintaxis Error
+                      {t('Sintaxis Error')}
                     </span>
                   </div>
                   <pre className="p-3 text-[9.5px] font-mono leading-relaxed text-rose-300/90 overflow-x-auto max-h-[170px] whitespace-pre-wrap select-text text-slate-350">
                     {(() => {
-                      const rawLog = validationResult.stderr || validationResult.stdout || validationResult.message || '';
+                      const rawLog = validationResult.stderr || validationResult.stdout || (validationResult.message ? t(validationResult.message) : '');
                       return rawLog.replace(/\/tmp\/nginx-sandbox-[a-z0-9-]+\/(etc\/nginx\/)?/gi, '/etc/nginx/');
                     })()}
                   </pre>
@@ -944,10 +946,10 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                 <div className="bg-[#0D1E15]/50 border border-emerald-500/20 rounded-lg p-3 text-center space-y-1 animate-scaleUp">
                   <span className="text-emerald-400 font-bold text-xs uppercase flex items-center justify-center gap-1.5">
                     <CheckCircle2 size={15} />
-                    Despliegue Operativo Exitoso
+                    {t('Despliegue Operativo Exitoso')}
                   </span>
                   <p className="text-[10px] text-slate-300 font-sans">
-                    Nginx ha auditado, compilado y activado esta versión sin advertencias.
+                    {t('Nginx ha auditado, compilado y activado esta versión sin advertencias.')}
                   </p>
                 </div>
               )}
@@ -962,7 +964,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                   onClick={() => setCommitModalPhase('input')}
                   className="px-4 py-2 bg-gradient-to-r from-rose-500/10 to-rose-500/25 border border-rose-500/30 text-rose-300 hover:text-rose-200 transition-all rounded text-xs font-bold uppercase cursor-pointer"
                 >
-                  Cerrar e Ir a Corregir Sintaxis
+                  {t('Cerrar e Ir a Corregir Sintaxis')}
                 </button>
               ) : modalSteps[3] && modalSteps[3].status === 'success' ? (
                 <button
@@ -971,12 +973,12 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                   className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white transition-all rounded text-xs font-bold uppercase cursor-pointer flex items-center gap-1.5"
                 >
                   <Check size={12} className="stroke-[3]" />
-                  Cerrar y Regresar
+                  {t('Cerrar y Regresar')}
                 </button>
               ) : (
                 <div className="text-[10px] text-slate-500 font-mono flex items-center gap-2 pr-2">
                   <Loader2 size={11} className="animate-spin text-sky-400" />
-                  Operando transacciones...
+                  {t('Operando transacciones...')}
                 </div>
               )}
             </div>

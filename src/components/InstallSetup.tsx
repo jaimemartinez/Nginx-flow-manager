@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { secureFetch } from '../utils/api';
+import { useT } from '../i18n/i18n';
+import { LanguageToggle } from '../i18n/LanguageToggle';
 import {
   Shield,
   Terminal,
@@ -27,6 +29,7 @@ interface InstallSetupProps {
 }
 
 export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
+  const { t } = useT();
   // Setup steps: 'detect' | 'prompt-install' | 'remote-config' | 'security' | 'login'
   const [step, setStep] = useState<'detect' | 'prompt-install' | 'remote-config' | 'security' | 'login'>('detect');
   
@@ -103,10 +106,10 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
           setStep('prompt-install');
         }
       } else {
-        setError(data.error || 'No se pudo comunicar con el servidor.');
+        setError(data.error || t('No se pudo comunicar con el servidor.'));
       }
     } catch (err: any) {
-      setError(`Error de comunicación: ${err.message || err}`);
+      setError(t('Error de comunicación: {0}', err.message || err));
     } finally {
       setLoading(false);
     }
@@ -135,7 +138,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
       }
     } catch (err: any) {
       setPathValidated(false);
-      setPathValidationMsg(`Error al conectar: ${err.message}`);
+      setPathValidationMsg(t('Error al conectar: {0}', err.message));
     } finally {
       setValidatingPath(false);
     }
@@ -145,18 +148,18 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
   const triggerAptInstall = async () => {
     try {
       setInstallingNginx(true);
-      setTerminalLogs(['$ apt-get update && apt-get install -y nginx', 'Leyendo base de datos de paquetes...']);
+      setTerminalLogs(['$ apt-get update && apt-get install -y nginx', t('Leyendo base de datos de paquetes...')]);
       
       const res = await secureFetch('/api/setup-install-nginx', { method: 'POST' });
       const data = await res.json();
       
       if (data.success) {
         setTerminalLogs(prev => [
-          ...prev, 
-          'Descargando dependencias...', 
-          'Instalando paquetes de soporte...',
-          'Configurando archivos iniciales en /etc/nginx/sites-available de manera automática...',
-          '¡Nginx instalado y configurado correctamente!'
+          ...prev,
+          t('Descargando dependencias...'),
+          t('Instalando paquetes de soporte...'),
+          t('Configurando archivos iniciales en /etc/nginx/sites-available de manera automática...'),
+          t('¡Nginx instalado y configurado correctamente!')
         ]);
         setNginxDetected(true);
         setNginxPath(data.path || '/etc/nginx');
@@ -170,11 +173,11 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
           setInstallingNginx(false);
         }, 3000);
       } else {
-        setTerminalLogs(prev => [...prev, `[ERROR]: ${data.error || 'Falló la instalación por APT.'}`]);
+        setTerminalLogs(prev => [...prev, t('[ERROR]: {0}', data.error || t('Falló la instalación por APT.'))]);
         setInstallingNginx(false);
       }
     } catch (err: any) {
-      setTerminalLogs(prev => [...prev, `[EXCEPCIÓN]: ${err.message}`]);
+      setTerminalLogs(prev => [...prev, t('[EXCEPCIÓN]: {0}', err.message)]);
       setInstallingNginx(false);
     }
   };
@@ -198,7 +201,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
         })
       });
       const data = await res.json();
-      setSshTestResult({ ok: data.success, message: data.success ? `${data.message}${data.nginxVersion ? ` — ${data.nginxVersion}` : ''}` : (data.error || 'Error desconocido') });
+      setSshTestResult({ ok: data.success, message: data.success ? `${data.message}${data.nginxVersion ? ` — ${data.nginxVersion}` : ''}` : (data.error || t('Error desconocido')) });
     } catch (err: any) {
       setSshTestResult({ ok: false, message: err.message });
     } finally {
@@ -210,11 +213,11 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
   const handleFinalInstall = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminUser.trim() || !adminPassword) {
-      setError('Por favor proporcione un usuario administrador y una contraseña.');
+      setError(t('Por favor proporcione un usuario administrador y una contraseña.'));
       return;
     }
     if (adminPassword !== adminPasswordConfirm) {
-      setError('Las contraseñas no coinciden. Por favor verifique.');
+      setError(t('Las contraseñas no coinciden. Por favor verifique.'));
       return;
     }
 
@@ -253,30 +256,30 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
 
         // Remote mode: auto-install the hardened agent if it isn't already on the server.
         if (remoteMode) {
-          setAgentPhase('Instalando agente seguro en el servidor...');
+          setAgentPhase(t('Instalando agente seguro en el servidor...'));
           try {
             const ar = await secureFetch('/api/agent/ensure', {
               method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
             });
             const ad = await ar.json();
             if ((ad.alreadyInstalled || ad.installed) && ad.reachable) {
-              setAgentPhase(`Agente seguro ${ad.alreadyInstalled ? 'ya instalado' : 'instalado'} y verificado up&running ✓`);
+              setAgentPhase(t('Agente seguro {0} y verificado up&running ✓', ad.alreadyInstalled ? t('ya instalado') : t('instalado')));
             } else if (ad.alreadyInstalled || ad.installed) {
-              setAgentPhase('Agente instalado pero no responde aún. ' + (ad.error || ''));
+              setAgentPhase(t('Agente instalado pero no responde aún. {0}', ad.error || ''));
             } else {
-              setAgentPhase('Agente no instalado (puedes hacerlo luego desde el panel Agente). ' + (ad.error || ''));
+              setAgentPhase(t('Agente no instalado (puedes hacerlo luego desde el panel Agente). {0}', ad.error || ''));
             }
           } catch (e: any) {
-            setAgentPhase('No se pudo instalar el agente automáticamente (continuando). ' + (e?.message || ''));
+            setAgentPhase(t('No se pudo instalar el agente automáticamente (continuando). {0}', e?.message || ''));
           }
           await new Promise(r => setTimeout(r, 900));
         }
         onSetupSuccess(data.token, data.adminUser, offlineMode);
       } else {
-        setError(data.error || 'No se pudo guardar la configuración.');
+        setError(data.error || t('No se pudo guardar la configuración.'));
       }
     } catch (err: any) {
-      setError(`Error al guardar configuración: ${err.message}`);
+      setError(t('Error al guardar configuración: {0}', err.message));
     } finally {
       setActionLoading(false);
     }
@@ -286,7 +289,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminUser.trim() || !adminPassword) {
-      setError('Por favor proporcione las credenciales.');
+      setError(t('Por favor proporcione las credenciales.'));
       return;
     }
 
@@ -304,7 +307,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
       });
       
       if (res.status === 401) {
-        setError('Credenciales inválidas de administrador.');
+        setError(t('Credenciales inválidas de administrador.'));
         return;
       }
       
@@ -312,10 +315,10 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
       if (data.success) {
         onSetupSuccess(data.token, data.adminUser);
       } else {
-        setError(data.error || 'No se pudo iniciar sesión.');
+        setError(data.error || t('No se pudo iniciar sesión.'));
       }
     } catch (err: any) {
-      setError(`Error al iniciar sesión: ${err.message}`);
+      setError(t('Error al iniciar sesión: {0}', err.message));
     } finally {
       setActionLoading(false);
     }
@@ -325,7 +328,9 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
   return (
     <div className="fixed inset-0 bg-[#070708] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-950/10 via-[#0A0A0C] to-black flex items-center justify-center p-4 z-[99999]">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px]" />
-      
+
+      <LanguageToggle className="fixed top-4 right-4 z-[100]" />
+
       <div className="bg-[#111114] border border-white/5 shadow-[0_0_80px_rgba(0,150,57,0.06)] rounded-xl max-w-lg w-full relative z-10 overflow-hidden font-sans">
         
         {/* Superior Header accent line */}
@@ -341,7 +346,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
               Nginx Flow Engine
             </h1>
             <p className="text-[10px] text-slate-400 font-sans tracking-wide">
-              {step === 'login' ? 'Seguridad Activa • Identificación de Administrador' : 'Asistente de Configuración e Instalación Segura'}
+              {step === 'login' ? t('Seguridad Activa • Identificación de Administrador') : t('Asistente de Configuración e Instalación Segura')}
             </p>
           </div>
         </div>
@@ -353,7 +358,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
           {error && (
             <div className="p-3 bg-rose-500/5 border border-rose-500/20 text-rose-300 rounded text-xs flex gap-2.5 items-start">
               <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-400" />
-              <span className="leading-relaxed font-mono">{error}</span>
+              <span className="leading-relaxed font-mono">{t(error)}</span>
             </div>
           )}
 
@@ -362,8 +367,8 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
             <div className="text-center py-8 space-y-4">
               <Loader2 className="h-8 w-8 text-[#009639] animate-spin mx-auto" />
               <div className="space-y-1">
-                <p className="text-xs font-semibold text-slate-300 font-mono text-center">Corriendo diagnósticos del sistema...</p>
-                <p className="text-[10px] text-slate-500 text-center">Detectando ejecutables de Nginx e integridad corporativa</p>
+                <p className="text-xs font-semibold text-slate-300 font-mono text-center">{t('Corriendo diagnósticos del sistema...')}</p>
+                <p className="text-[10px] text-slate-500 text-center">{t('Detectando ejecutables de Nginx e integridad corporativa')}</p>
               </div>
             </div>
           )}
@@ -375,9 +380,9 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 <div className="bg-amber-500/5 border border-amber-500/20 p-3 rounded-lg flex gap-3">
                   <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-amber-300 font-mono">NGINX NO DETECTADO LOCALMENTE</h4>
+                    <h4 className="text-xs font-bold text-amber-300 font-mono">{t('NGINX NO DETECTADO LOCALMENTE')}</h4>
                     <p className="text-[10px] text-slate-400 leading-normal">
-                      No se encontró Nginx en <code className="bg-black/40 text-rose-300 font-mono px-1 py-0.5 rounded text-[9px]">/usr/sbin/nginx</code>. Puedes instalarlo, conectarte a un servidor remoto, u operar en modo offline.
+                      {t('No se encontró Nginx en')} <code className="bg-black/40 text-rose-300 font-mono px-1 py-0.5 rounded text-[9px]">/usr/sbin/nginx</code>{t('. Puedes instalarlo, conectarte a un servidor remoto, u operar en modo offline.')}
                     </p>
                   </div>
                 </div>
@@ -388,10 +393,10 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                   {nginxDetected && (
                     <div className="bg-emerald-500/5 border border-emerald-500/20 p-2.5 rounded-lg flex gap-2 text-[10px]">
                       <Check size={13} className="text-emerald-400 shrink-0 mt-0.5" />
-                      <span className="text-emerald-300">Nginx detectado en <code className="font-mono">{detectedPath}</code> — selecciona cómo quieres usarlo.</span>
+                      <span className="text-emerald-300">{t('Nginx detectado en')} <code className="font-mono">{detectedPath}</code> {t('— selecciona cómo quieres usarlo.')}</span>
                     </div>
                   )}
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">¿Cómo desea proceder?</p>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{t('¿Cómo desea proceder?')}</p>
                   
                   <div className="grid grid-cols-1 gap-2.5">
                     {/* CONFIRM ALREADY INSTALLED */}
@@ -401,13 +406,13 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                           <Globe size={14} />
                         </div>
                         <div className="space-y-1 min-w-0 flex-1">
-                          <h5 className="text-xs font-bold text-white uppercase group-hover:text-emerald-400 transition-colors">Sí, Nginx ya está instalado en este servidor</h5>
-                          <p className="text-[10px] text-slate-400 leading-normal">Permite personalizar de inmediato las rutas e importar la configuración física activa.</p>
+                          <h5 className="text-xs font-bold text-white uppercase group-hover:text-emerald-400 transition-colors">{t('Sí, Nginx ya está instalado en este servidor')}</h5>
+                          <p className="text-[10px] text-slate-400 leading-normal">{t('Permite personalizar de inmediato las rutas e importar la configuración física activa.')}</p>
                           
                           {/* Path customization drawer inputs */}
                           <div className="pt-3.5 space-y-3 border-t border-white/5 mt-2.5">
                             <div className="space-y-1">
-                              <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Carpeta de Configuración de Nginx</label>
+                              <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Carpeta de Configuración de Nginx')}</label>
                               <div className="flex gap-2">
                                 <input 
                                   type="text" 
@@ -425,18 +430,18 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                                   onClick={validateCustomPath}
                                   className="bg-zinc-800 hover:bg-zinc-700 text-xs text-white px-3 py-1.5 rounded font-bold font-mono transition-colors disabled:opacity-50"
                                 >
-                                  {validatingPath ? <Loader2 size={12} className="animate-spin" /> : 'Verificar'}
+                                  {validatingPath ? <Loader2 size={12} className="animate-spin" /> : t('Verificar')}
                                 </button>
                               </div>
                               {pathValidated !== null && (
                                 <div className={`text-[9px] font-mono leading-relaxed mt-1 ${pathValidated ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                  {pathValidated ? '✓ ' : '✗ '} {pathValidationMsg}
+                                  {pathValidated ? '✓ ' : '✗ '} {t(pathValidationMsg)}
                                 </div>
                               )}
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Ruta del Ejecutable Binario Nginx</label>
+                              <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Ruta del Ejecutable Binario Nginx')}</label>
                               <input 
                                 type="text" 
                                 value={nginxBinary}
@@ -451,7 +456,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                               onClick={() => setStep('security')}
                               className="w-full mt-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] uppercase font-bold py-2 rounded tracking-widest transition-all shadow-md flex items-center justify-center gap-1.5"
                             >
-                              Siguiente paso <ArrowRight size={12} />
+                              {t('Siguiente paso')} <ArrowRight size={12} />
                             </button>
                           </div>
                         </div>
@@ -468,8 +473,8 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                           <Zap size={14} className="text-emerald-400" />
                         </div>
                         <div className="space-y-1 flex-1">
-                          <h5 className="text-xs font-bold text-white uppercase group-hover:text-emerald-400 transition-colors">No, por favor instalar Nginx por mí (APT)</h5>
-                          <p className="text-[10px] text-slate-400 leading-normal">Esto gatilla una instalación desatendida del paquete oficial de nginx de manera completamente automática dentro de la instancia.</p>
+                          <h5 className="text-xs font-bold text-white uppercase group-hover:text-emerald-400 transition-colors">{t('No, por favor instalar Nginx por mí (APT)')}</h5>
+                          <p className="text-[10px] text-slate-400 leading-normal">{t('Esto gatilla una instalación desatendida del paquete oficial de nginx de manera completamente automática dentro de la instancia.')}</p>
                         </div>
                       </div>
                     </div>
@@ -488,8 +493,8 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                           <Terminal size={14} />
                         </div>
                         <div className="space-y-1 flex-1">
-                          <h5 className="text-xs font-bold text-violet-300 uppercase group-hover:text-violet-200 transition-colors">Nginx Remoto (SSH)</h5>
-                          <p className="text-[10px] text-slate-400 leading-normal">Conecta a un servidor remoto vía SSH para gestionar Nginx. Leerá y escribirá archivos de configuración directamente en la máquina remota.</p>
+                          <h5 className="text-xs font-bold text-violet-300 uppercase group-hover:text-violet-200 transition-colors">{t('Nginx Remoto (SSH)')}</h5>
+                          <p className="text-[10px] text-slate-400 leading-normal">{t('Conecta a un servidor remoto vía SSH para gestionar Nginx. Leerá y escribirá archivos de configuración directamente en la máquina remota.')}</p>
                         </div>
                       </div>
                     </div>
@@ -507,8 +512,8 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                           <WifiOff size={14} />
                         </div>
                         <div className="space-y-1 flex-1">
-                          <h5 className="text-xs font-bold text-cyan-300 uppercase group-hover:text-cyan-200 transition-colors">Usar en Modo Offline — Solo diseñar y descargar</h5>
-                          <p className="text-[10px] text-slate-400 leading-normal">No se conectará a ningún proceso Nginx del sistema. Diseña configuraciones visualmente y descarga los archivos <code className="bg-black/40 text-cyan-300 font-mono px-1 py-0.5 rounded text-[9px]">.conf</code> generados para usarlos donde quieras.</p>
+                          <h5 className="text-xs font-bold text-cyan-300 uppercase group-hover:text-cyan-200 transition-colors">{t('Usar en Modo Offline — Solo diseñar y descargar')}</h5>
+                          <p className="text-[10px] text-slate-400 leading-normal">{t('No se conectará a ningún proceso Nginx del sistema. Diseña configuraciones visualmente y descarga los archivos')} <code className="bg-black/40 text-cyan-300 font-mono px-1 py-0.5 rounded text-[9px]">.conf</code> {t('generados para usarlos donde quieras.')}</p>
                         </div>
                       </div>
                     </div>
@@ -519,11 +524,11 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center gap-2 text-slate-300">
                     <Loader2 size={14} className="animate-spin text-emerald-400 flex-shrink-0" />
-                    <span className="text-[10px] uppercase tracking-wider font-mono font-bold">Instalador activo: apt-get</span>
+                    <span className="text-[10px] uppercase tracking-wider font-mono font-bold">{t('Instalador activo: apt-get')}</span>
                   </div>
                   <div className="bg-black/90 p-4 rounded-lg font-mono text-[9px] text-emerald-400 border border-white/5 space-y-1.5 max-h-[160px] overflow-y-auto box-border">
                     {terminalLogs.map((log, i) => (
-                      <div key={i} className="leading-relaxed break-all">{log}</div>
+                      <div key={i} className="leading-relaxed break-all">{t(log)}</div>
                     ))}
                   </div>
                 </div>
@@ -537,8 +542,8 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
               <div className="bg-violet-500/5 border border-violet-500/20 p-3 rounded-lg flex gap-3">
                 <Terminal size={16} className="text-violet-400 shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <span className="text-violet-300 font-bold uppercase text-[10px] font-mono block">Configuración SSH Remota</span>
-                  <p className="text-[10px] text-slate-400">Configura la conexión SSH al servidor donde corre Nginx.</p>
+                  <span className="text-violet-300 font-bold uppercase text-[10px] font-mono block">{t('Configuración SSH Remota')}</span>
+                  <p className="text-[10px] text-slate-400">{t('Configura la conexión SSH al servidor donde corre Nginx.')}</p>
                 </div>
               </div>
 
@@ -552,7 +557,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                       placeholder="192.168.1.10" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Puerto</label>
+                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Puerto')}</label>
                     <input type="number" value={remotePort} onChange={e => setRemotePort(e.target.value)}
                       className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-1.5 w-full focus:outline-none focus:border-violet-500 transition-colors"
                       placeholder="22" />
@@ -561,7 +566,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
 
                 {/* Username */}
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Usuario SSH</label>
+                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Usuario SSH')}</label>
                   <input type="text" value={remoteUser} onChange={e => setRemoteUser(e.target.value)}
                     className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-1.5 w-full focus:outline-none focus:border-violet-500 transition-colors"
                     placeholder="root" />
@@ -571,21 +576,21 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 <div className="flex bg-[#0A0A0B] border border-white/10 p-1 rounded gap-1">
                   <button type="button" onClick={() => setRemoteAuthType('password')}
                     className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded transition-all ${remoteAuthType === 'password' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-white'}`}>
-                    Contraseña
+                    {t('Contraseña')}
                   </button>
                   <button type="button" onClick={() => setRemoteAuthType('key')}
                     className={`flex-1 text-[10px] font-bold py-1.5 px-2 rounded transition-all ${remoteAuthType === 'key' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-white'}`}>
-                    Clave Privada
+                    {t('Clave Privada')}
                   </button>
                 </div>
 
                 {remoteAuthType === 'password' ? (
                   <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Contraseña SSH</label>
+                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Contraseña SSH')}</label>
                     <div className="relative">
                       <input type={showRemotePassword ? 'text' : 'password'} value={remotePassword} onChange={e => setRemotePassword(e.target.value)}
                         className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-1.5 w-full focus:outline-none focus:border-violet-500 transition-colors pr-8"
-                        placeholder="contraseña" />
+                        placeholder={t('contraseña')} />
                       <button type="button" onClick={() => setShowRemotePassword(v => !v)} className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 cursor-pointer">
                         {showRemotePassword ? <EyeOff size={13} /> : <Eye size={13} />}
                       </button>
@@ -594,16 +599,16 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 ) : (
                   <div className="space-y-2">
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Clave Privada (contenido PEM)</label>
+                      <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Clave Privada (contenido PEM)')}</label>
                       <textarea value={remoteSshKey} onChange={e => setRemoteSshKey(e.target.value)}
                         className="bg-[#08080A] border border-white/10 text-white font-mono text-[9px] rounded px-2.5 py-2 w-full focus:outline-none focus:border-violet-500 transition-colors resize-none h-24"
                         placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Passphrase (opcional)</label>
+                      <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Passphrase (opcional)')}</label>
                       <input type="password" value={remoteKeyPassphrase} onChange={e => setRemoteKeyPassphrase(e.target.value)}
                         className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-1.5 w-full focus:outline-none focus:border-violet-500 transition-colors"
-                        placeholder="dejar vacío si no tiene" />
+                        placeholder={t('dejar vacío si no tiene')} />
                     </div>
                   </div>
                 )}
@@ -611,13 +616,13 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 {/* Nginx paths */}
                 <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
                   <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Config dir (remoto)</label>
+                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Config dir (remoto)')}</label>
                     <input type="text" value={nginxPath} onChange={e => setNginxPath(e.target.value)}
                       className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-1.5 w-full focus:outline-none focus:border-violet-500 transition-colors"
                       placeholder="/etc/nginx" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Binario nginx</label>
+                    <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Binario nginx')}</label>
                     <input type="text" value={nginxBinary} onChange={e => setNginxBinary(e.target.value)}
                       className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-1.5 w-full focus:outline-none focus:border-violet-500 transition-colors"
                       placeholder="/usr/sbin/nginx" />
@@ -628,20 +633,20 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 <button type="button" onClick={handleTestSSH} disabled={testingSSH || !remoteHost.trim()}
                   className="w-full flex items-center justify-center gap-2 py-2 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 rounded text-[10px] font-bold text-violet-300 uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                   {testingSSH ? <Loader2 size={12} className="animate-spin" /> : <Terminal size={12} />}
-                  {testingSSH ? 'Probando conexión...' : 'Probar Conexión SSH'}
+                  {testingSSH ? t('Probando conexión...') : t('Probar Conexión SSH')}
                 </button>
 
                 {sshTestResult && (
                   <div className={`p-2.5 rounded border text-[10px] font-mono flex items-start gap-2 ${sshTestResult.ok ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/5 border-rose-500/20 text-rose-300'}`}>
                     {sshTestResult.ok ? <Check size={13} className="shrink-0 mt-0.5" /> : <AlertCircle size={13} className="shrink-0 mt-0.5" />}
-                    <span>{sshTestResult.message}</span>
+                    <span>{t(sshTestResult.message)}</span>
                   </div>
                 )}
               </div>
 
               <button type="button" onClick={() => setStep('security')} disabled={!sshTestResult?.ok}
                 className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-[10px] uppercase tracking-widest font-bold py-2.5 rounded transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed">
-                Siguiente: Crear Admin <ArrowRight size={12} />
+                {t('Siguiente: Crear Admin')} <ArrowRight size={12} />
               </button>
             </div>
           )}
@@ -653,25 +658,25 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 <div className="bg-cyan-500/5 border border-cyan-500/20 p-3 rounded-lg flex gap-3 text-xs">
                   <WifiOff size={16} className="text-cyan-400 shrink-0 mt-0.5" />
                   <div className="space-y-1 leading-normal">
-                    <span className="text-cyan-300 font-semibold font-mono uppercase block text-[10px]">Modo Offline Activo</span>
-                    <p className="text-[10px] text-slate-400">La app no se conectará a Nginx. Diseña y descarga los archivos <code className="font-mono">.conf</code> generados.</p>
+                    <span className="text-cyan-300 font-semibold font-mono uppercase block text-[10px]">{t('Modo Offline Activo')}</span>
+                    <p className="text-[10px] text-slate-400">{t('La app no se conectará a Nginx. Diseña y descarga los archivos')} <code className="font-mono">.conf</code> {t('generados.')}</p>
                   </div>
                 </div>
               ) : remoteMode ? (
                 <div className="bg-violet-500/5 border border-violet-500/20 p-3 rounded-lg flex gap-3 text-xs">
                   <Terminal size={16} className="text-violet-400 shrink-0 mt-0.5" />
                   <div className="space-y-1 leading-normal">
-                    <span className="text-violet-300 font-semibold font-mono uppercase block text-[10px]">Modo Remoto SSH — {remoteUser}@{remoteHost}</span>
-                    <p className="text-[10px] text-slate-400">Al continuar se instalará automáticamente un <strong className="text-violet-300">agente seguro</strong> en el servidor (si no está ya), para gestionar nginx sin ejecutar shell crudo por SSH.</p>
+                    <span className="text-violet-300 font-semibold font-mono uppercase block text-[10px]">{t('Modo Remoto SSH — {0}@{1}', remoteUser, remoteHost)}</span>
+                    <p className="text-[10px] text-slate-400">{t('Al continuar se instalará automáticamente un')} <strong className="text-violet-300">{t('agente seguro')}</strong> {t('en el servidor (si no está ya), para gestionar nginx sin ejecutar shell crudo por SSH.')}</p>
                   </div>
                 </div>
               ) : (
                 <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-lg flex gap-3 text-xs">
                   <Check size={16} className="text-[#009639] shrink-0 mt-0.5" />
                   <div className="space-y-1 leading-normal">
-                    <span className="text-white font-semibold font-mono uppercase block text-[10px]">¡Nginx Listo e Integrado!</span>
+                    <span className="text-white font-semibold font-mono uppercase block text-[10px]">{t('¡Nginx Listo e Integrado!')}</span>
                     <p className="text-[10px] text-slate-400">
-                      Se importará y cargará toda la configuración activa detectada en <code className="text-emerald-400 font-mono">{nginxPath}</code> como la <strong className="text-slate-300">Línea de Base Estable Inicial</strong> de manera automática.
+                      {t('Se importará y cargará toda la configuración activa detectada en')} <code className="text-emerald-400 font-mono">{nginxPath}</code> {t('como la')} <strong className="text-slate-300">{t('Línea de Base Estable Inicial')}</strong> {t('de manera automática.')}
                     </p>
                   </div>
                 </div>
@@ -681,32 +686,31 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
               <div className="bg-sky-500/5 border border-sky-500/20 p-3 rounded-lg flex gap-3 text-xs">
                 <Lock size={16} className="text-sky-400 shrink-0 mt-0.5" />
                 <div className="space-y-1 leading-normal">
-                  <span className="text-sky-300 font-semibold font-mono uppercase block text-[10px]">Panel servido por HTTPS</span>
+                  <span className="text-sky-300 font-semibold font-mono uppercase block text-[10px]">{t('Panel servido por HTTPS')}</span>
                   <p className="text-[10px] text-slate-400">
-                    Se generará automáticamente un <strong className="text-sky-300">certificado autofirmado</strong> (el navegador
-                    mostrará un aviso la primera vez). Podrás configurar uno propio más tarde en <strong className="text-slate-300">Certificado HTTPS del panel</strong>.
+                    {t('Se generará automáticamente un')} <strong className="text-sky-300">{t('certificado autofirmado')}</strong> {t('(el navegador mostrará un aviso la primera vez). Podrás configurar uno propio más tarde en')} <strong className="text-slate-300">{t('Certificado HTTPS del panel')}</strong>.
                   </p>
                 </div>
               </div>
 
               {/* Panel listening port */}
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Puerto del panel (HTTPS)</label>
+                <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Puerto del panel (HTTPS)')}</label>
                 <input
                   type="number" min={1} max={65535} value={panelPort}
                   onChange={(e) => setPanelPort(e.target.value)}
                   placeholder="3000"
                   className="w-full bg-[#0A0A0B] border border-white/10 rounded px-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-[#009639]"
                 />
-                <p className="text-[9px] text-slate-500">Puerto en el que el panel escuchará por HTTPS. Por defecto 3000. Podrás cambiarlo después.</p>
+                <p className="text-[9px] text-slate-500">{t('Puerto en el que el panel escuchará por HTTPS. Por defecto 3000. Podrás cambiarlo después.')}</p>
               </div>
 
               {/* Offline mode toggle (visible when nginx was auto-detected) */}
               <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-lg px-3.5 py-2.5">
                 <div className="flex items-center gap-2">
                   <WifiOff size={13} className={offlineMode ? 'text-cyan-400' : 'text-slate-500'} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Usar en Modo Offline</span>
-                  <span className="text-[9px] text-slate-500 font-sans">(sin conexión a Nginx, solo descarga de archivos)</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">{t('Usar en Modo Offline')}</span>
+                  <span className="text-[9px] text-slate-500 font-sans">{t('(sin conexión a Nginx, solo descarga de archivos)')}</span>
                 </div>
                 <button
                   type="button"
@@ -718,10 +722,10 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
               </div>
 
               <div className="space-y-3">
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-mono">Creación de Usuario de Administración</p>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-mono">{t('Creación de Usuario de Administración')}</p>
                 
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Nombre de Usuario Administrador</label>
+                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Nombre de Usuario Administrador')}</label>
                   <div className="relative">
                     <input 
                       type="text" 
@@ -738,14 +742,14 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Contraseña de Seguridad</label>
+                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Contraseña de Seguridad')}</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
                       className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-2 w-full focus:outline-none focus:border-emerald-500 transition-colors pl-8 pr-8"
-                      placeholder="Introduzca contraseña segura"
+                      placeholder={t('Introduzca contraseña segura')}
                       required
                     />
                     <div className="absolute left-2.5 top-3 text-slate-500">
@@ -762,7 +766,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Confirmar Contraseña</label>
+                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Confirmar Contraseña')}</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
@@ -775,7 +779,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                           ? 'border-emerald-500/60 focus:border-emerald-500'
                           : 'border-white/10 focus:border-emerald-500'
                       }`}
-                      placeholder="Repita la contraseña"
+                      placeholder={t('Repita la contraseña')}
                       required
                     />
                     <div className="absolute left-2.5 top-3 text-slate-500">
@@ -788,14 +792,14 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                     )}
                   </div>
                   {adminPasswordConfirm && adminPassword !== adminPasswordConfirm && (
-                    <p className="text-[9px] text-rose-400 font-mono mt-0.5">Las contraseñas no coinciden</p>
+                    <p className="text-[9px] text-rose-400 font-mono mt-0.5">{t('Las contraseñas no coinciden')}</p>
                   )}
                 </div>
               </div>
 
               {agentPhase && (
                 <div className="bg-violet-500/5 border border-violet-500/20 rounded px-3 py-2 flex items-center gap-2 text-[10px] text-violet-300 font-mono">
-                  <Loader2 size={12} className="animate-spin shrink-0" /> {agentPhase}
+                  <Loader2 size={12} className="animate-spin shrink-0" /> {t(agentPhase)}
                 </div>
               )}
 
@@ -804,7 +808,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 disabled={actionLoading}
                 className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-[#009639] hover:from-emerald-500 hover:to-emerald-600 text-white text-[10px] uppercase tracking-widest font-bold py-2.5 rounded shadow-lg shadow-emerald-950/20 hover:shadow-emerald-950/30 transition-all flex items-center justify-center gap-1.5 border border-emerald-500/10 cursor-pointer disabled:opacity-50"
               >
-                {actionLoading ? <Loader2 size={12} className="animate-spin" /> : 'Finalizar Instalación y Activar Seguridad'} <ArrowRight size={12} />
+                {actionLoading ? <Loader2 size={12} className="animate-spin" /> : t('Finalizar Instalación y Activar Seguridad')} <ArrowRight size={12} />
               </button>
             </form>
           )}
@@ -815,16 +819,16 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
               <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-lg flex gap-3 text-xs">
                 <Lock size={16} className="text-[#009639] shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <span className="text-white font-bold uppercase block text-[10px] font-mono">SISTEMA PROTEGIDO</span>
+                  <span className="text-white font-bold uppercase block text-[10px] font-mono">{t('SISTEMA PROTEGIDO')}</span>
                   <p className="text-[10px] text-slate-400 font-sans leading-relaxed">
-                    Nginx Flow Manager está asegurado contra intrusos. Por favor, identifíquese con sus credenciales de administrador para acceder al panel.
+                    {t('Nginx Flow Manager está asegurado contra intrusos. Por favor, identifíquese con sus credenciales de administrador para acceder al panel.')}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Nombre de Usuario</label>
+                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Nombre de Usuario')}</label>
                   <input 
                     type="text" 
                     value={adminUser}
@@ -836,14 +840,14 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Contraseña</label>
+                  <label className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">{t('Contraseña')}</label>
                   <div className="relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
                       className="bg-[#08080A] border border-white/10 text-white font-mono text-xs rounded px-2.5 py-2 w-full focus:outline-none focus:border-emerald-500 transition-colors pr-8"
-                      placeholder="Contraseña"
+                      placeholder={t('Contraseña')}
                       required
                     />
                     <button
@@ -862,7 +866,7 @@ export function InstallSetup({ onSetupSuccess }: InstallSetupProps) {
                 disabled={actionLoading}
                 className="w-full mt-2 bg-[#009639] hover:bg-emerald-600 text-white text-[10px] uppercase tracking-widest font-bold py-2.5 rounded shadow-lg shadow-emerald-950/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {actionLoading ? <Loader2 size={12} className="animate-spin" /> : 'Acceder de forma segura'} <ArrowRight size={12} />
+                {actionLoading ? <Loader2 size={12} className="animate-spin" /> : t('Acceder de forma segura')} <ArrowRight size={12} />
               </button>
             </form>
           )}

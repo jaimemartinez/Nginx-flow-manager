@@ -27,6 +27,7 @@ import { ServerNode, LocationNode, UpstreamNode, GlobalCoreNode, GlobalHttpNode,
 import { TrafficEdge } from './edges/TrafficEdge';
 import { buildTrafficIndex, matchEventToEdges, emitPulse, statusColor } from '../utils/trafficViz';
 import { secureFetch } from '../utils/api';
+import { useT } from '../i18n/i18n';
 import { Plus, Maximize2, HelpCircle, Network, Layers, Trash2, ChevronDown, ChevronUp, Cpu, Sparkles, Radio } from 'lucide-react';
 
 const nodeTypes = {
@@ -54,6 +55,7 @@ export const NginxCanvas: React.FC = () => {
   } = useTopology();
 
   const { fitView } = useReactFlow();
+  const { t } = useT();
 
   const handleAutoLayout = () => {
     if (!activeSiteId) return;
@@ -447,10 +449,10 @@ export const NginxCanvas: React.FC = () => {
 
   const handleClearCanvas = () => {
     if (!activeSiteId) return;
-    const title = isGlobal ? 'Limpiar Arquitectura Global' : 'Limpiar Lienzo';
-    const msg = isGlobal 
-      ? '¿Estás seguro de que deseas vaciar todos los bloques de la arquitectura general y streams?'
-      : '¿Estás seguro de que deseas limpiar todo el diseño y nodos de este sitio virtual?';
+    const title = isGlobal ? t('Limpiar Arquitectura Global') : t('Limpiar Lienzo');
+    const msg = isGlobal
+      ? t('¿Estás seguro de que deseas vaciar todos los bloques de la arquitectura general y streams?')
+      : t('¿Estás seguro de que deseas limpiar todo el diseño y nodos de este sitio virtual?');
     askConfirmation(
       title,
       msg,
@@ -483,7 +485,7 @@ export const NginxCanvas: React.FC = () => {
           <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]"></span>
           <span className="font-mono text-xs text-slate-400 truncate">
             {isGlobal ? (
-              <span>Arquitectura Global: <strong className="text-emerald-400 font-semibold font-display">nginx.conf</strong></span>
+              <span>{t('Arquitectura Global:')} <strong className="text-emerald-400 font-semibold font-display">nginx.conf</strong></span>
             ) : (
               <span>Site File: <strong className="text-slate-100 font-semibold">{activeSite?.filename}</strong></span>
             )}
@@ -507,9 +509,9 @@ export const NginxCanvas: React.FC = () => {
               <button
                 onClick={() => addNode('__global__', 'raw_config')}
                 className="flex items-center gap-1 text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded transition-colors cursor-pointer"
-                title="Añade un nodo de configuración cruda (cualquier directiva o bloque nginx)."
+                title={t('Añade un nodo de configuración cruda (cualquier directiva o bloque nginx).')}
               >
-                <Plus size={12} className="stroke-[2.5]" /> Config cruda
+                <Plus size={12} className="stroke-[2.5]" /> {t('Config cruda')}
               </button>
             </>
           ) : (
@@ -554,9 +556,9 @@ export const NginxCanvas: React.FC = () => {
               <button
                 onClick={() => addNode(activeSiteId, 'raw_config')}
                 className="flex items-center gap-1 text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded transition-colors cursor-pointer font-sans"
-                title="Añade un nodo de configuración cruda (cualquier directiva o bloque: map, geo, if, includes…). Conéctalo a un server o location."
+                title={t('Añade un nodo de configuración cruda (cualquier directiva o bloque: map, geo, if, includes…). Conéctalo a un server o location.')}
               >
-                <Plus size={12} className="stroke-[2.5]" /> Config cruda
+                <Plus size={12} className="stroke-[2.5]" /> {t('Config cruda')}
               </button>
             </>
           )}
@@ -567,10 +569,10 @@ export const NginxCanvas: React.FC = () => {
           <button
             onClick={handleAutoLayout}
             className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 rounded text-[11px] font-semibold transition-all cursor-pointer"
-            title="Ordenar y alinear los nodos en columnas de izquierda a derecha sin superposiciones"
+            title={t('Ordenar y alinear los nodos en columnas de izquierda a derecha sin superposiciones')}
           >
             <Sparkles size={12} className="text-emerald-400" />
-            <span>Ordenar</span>
+            <span>{t('Ordenar')}</span>
           </button>
 
           {/* Live traffic animation toggle (per-site; needs the agent + the viz log_format deployed) */}
@@ -584,8 +586,8 @@ export const NginxCanvas: React.FC = () => {
                   : 'bg-sky-500/10 hover:bg-sky-500/25 text-sky-300 border-sky-500/30 hover:border-sky-500/50'
               }`}
               title={agentAvailable
-                ? 'Anima el tráfico en vivo sobre el lienzo (requiere el log_format de visualización desplegado)'
-                : 'Requiere el agente instalado para el streaming en vivo'}
+                ? t('Anima el tráfico en vivo sobre el lienzo (requiere el log_format de visualización desplegado)')
+                : t('Requiere el agente instalado para el streaming en vivo')}
             >
               <Radio size={12} className={liveMode ? 'animate-pulse' : ''} />
               <span>{liveMode ? 'Live ●' : 'Live'}</span>
@@ -597,9 +599,9 @@ export const NginxCanvas: React.FC = () => {
           {!isGlobal && liveMode && (
             <span
               className="text-[10px] font-mono text-slate-400 px-2 py-1 bg-white/5 border border-white/10 rounded"
-              title="recibidos: líneas del stream • animados: peticiones que coinciden con nodos de este sitio"
+              title={t('recibidos: líneas del stream • animados: peticiones que coinciden con nodos de este sitio')}
             >
-              <span className="text-sky-300">{liveStats.received}</span> recibidos · <span className="text-emerald-300">{liveStats.animated}</span> animados
+              <span className="text-sky-300">{liveStats.received}</span> {t('recibidos')} · <span className="text-emerald-300">{liveStats.animated}</span> {t('animados')}
             </span>
           )}
 
@@ -679,16 +681,16 @@ export const NginxCanvas: React.FC = () => {
                   ⚙️ <span className="text-emerald-400 font-bold">Master Daemon</span> controls general system processes.
                 </p>
                 <p className="leading-relaxed font-sans">
-                  🔗 Conecta <span className="text-emerald-400 font-bold">Master Daemon</span> con <span className="text-emerald-400 font-bold">HTTP Globals</span> para activar hilos web.
+                  {t('🔗 Conecta')} <span className="text-emerald-400 font-bold">Master Daemon</span> {t('con')} <span className="text-emerald-400 font-bold">HTTP Globals</span> {t('para activar hilos web.')}
                 </p>
                 <p className="leading-relaxed font-sans text-[9.5px]">
-                  🌊 Conecta <span className="text-emerald-400 font-bold">Master Daemon</span> con <span className="text-cyan-400 font-bold font-mono">Stream Proxy</span> para habilitar redirección TCP/UDP externa.
+                  {t('🌊 Conecta')} <span className="text-emerald-400 font-bold">Master Daemon</span> {t('con')} <span className="text-cyan-400 font-bold font-mono">Stream Proxy</span> {t('para habilitar redirección TCP/UDP externa.')}
                 </p>
                 <p className="leading-relaxed font-sans text-[9px] text-emerald-300 font-semibold border-t border-white/5 pt-1.5">
-                  📦 <span className="text-emerald-400">HTTP Globals</span> → <span className="text-emerald-400">Gzip</span> habilita compresión gzip.
+                  📦 <span className="text-emerald-400">HTTP Globals</span> → <span className="text-emerald-400">Gzip</span> {t('habilita compresión gzip.')}
                 </p>
                 <p className="leading-relaxed border-t border-white/5 pt-1.5 text-[9px] text-amber-400/90 font-medium">
-                  ✂️ <strong>Doble clic</strong> sobre cualquier cable para cortar la conexión, o selecciónalo y pulsa <kbd className="bg-white/5 border border-white/10 px-1 rounded text-slate-300 font-sans">Del</kbd>.
+                  ✂️ <strong>{t('Doble clic')}</strong> {t('sobre cualquier cable para cortar la conexión, o selecciónalo y pulsa')} <kbd className="bg-white/5 border border-white/10 px-1 rounded text-slate-300 font-sans">Del</kbd>.
                 </p>
               </>
             )}
@@ -723,7 +725,7 @@ export const NginxCanvas: React.FC = () => {
                   🌀 Wire <span className="text-violet-400 font-bold">Location</span> to <span className="text-violet-400 font-bold">Upstream</span> to inject multi-backend balancing instantly!
                 </p>
                 <p className="leading-relaxed border-t border-white/5 pt-1.5 text-[9px] text-amber-400/90 font-medium">
-                  ✂️ <strong>Doble clic</strong> sobre cualquier cable para eliminar la conexión, o selecciónalo y pulsa <kbd className="bg-white/5 border border-white/10 px-1 rounded text-slate-300 font-sans">Del/Backspace</kbd>.
+                  ✂️ <strong>{t('Doble clic')}</strong> {t('sobre cualquier cable para eliminar la conexión, o selecciónalo y pulsa')} <kbd className="bg-white/5 border border-white/10 px-1 rounded text-slate-300 font-sans">Del/Backspace</kbd>.
                 </p>
                 {nodes.length === 0 && (
                   <div className="pt-1.5 text-emerald-400/80 animate-pulse text-[9px] font-bold">
