@@ -1,6 +1,14 @@
 # Nginx Flow Manager
 
+[![CI](https://github.com/jaimemartinez/Nginx-flow-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/jaimemartinez/Nginx-flow-manager/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)](tsconfig.json)
+[![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
+[![UI: English & Español](https://img.shields.io/badge/UI-English%20%26%20Espa%C3%B1ol-009639.svg)](#features)
+
 > Losslessly **import an existing, hand-written nginx config into an editable visual topology** — and round-trip it back out verbatim, without dropping or fabricating a single directive. From there, design on a canvas, compile to real nginx config with a pure-TypeScript compiler, validate it with `nginx -t` in a throwaway sandbox, and deploy to a remote Linux host over SSH.
+
+![Nginx Flow Manager — visual canvas editor](docs/images/hero-dashboard.png)
 
 Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. Its genuine differentiator is the **verbatim round-trip import**: point it at a live, hand-written nginx tree and it parses the real config — comments, ordering, and unmodeled blocks included — into an editable canvas, then compiles it back out byte-for-faithfully. Tools like Nginx Proxy Manager, Caddy, or Ansible make you adopt *their* model of your config; NFM adopts *yours*. You lay out servers, locations, upstreams and global blocks as nodes on an interactive canvas; the app compiles that graph into actual nginx files, tests them against a real nginx binary in an isolated sandbox, and pushes the result to your server — either through a hardened on-server **nfm-agent** or a direct SSH/local fallback. Because the compiler and parser are designed for exact fidelity, you can import an existing config and round-trip it without losing or fabricating a single directive.
 
@@ -31,6 +39,13 @@ Nginx Flow Manager (NFM) turns nginx administration into a visual workflow. Its 
 2. **Compile** — `src/utils/nginxCompiler.ts` turns the graph into a `CompiledNginxOutput` map of `{ absolute path → file contents }`, entirely in TypeScript (no nginx needed to generate the files).
 3. **Validate** — the candidate files are written into a throwaway sandbox and checked with `nginx -t`; the real config is left untouched.
 4. **Deploy** — validated files are written to the managed host and nginx is reloaded, with rollback if the reload fails.
+
+The **Files** view shows exactly what your canvas compiles to — the generated `nginx.conf` and each
+`sites-available/*.conf`, side by side with the running config and a diff. Here the location node's
+visual **Cache responses** toggle produced the real `proxy_cache` block, and the shared keys-zone was
+auto-generated in `nginx.conf` — no hand-editing:
+
+![Compiled nginx config in the Files view](docs/images/compiled-config.png)
 
 ### Node types
 
