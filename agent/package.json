@@ -1,10 +1,12 @@
 {
   "name": "nfm-agent",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "Hardened on-server agent for Nginx Flow Manager (JSON-RPC over an SSH forced-command channel).",
-  "bin": { "nfm-agent": "dist/main.js" },
+  "bin": {
+    "nfm-agent": "dist/main.js"
+  },
   "scripts": {
     "build": "tsx build.ts",
     "dev": "tsx src/main.ts"
