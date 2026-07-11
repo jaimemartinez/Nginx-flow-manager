@@ -23,6 +23,7 @@ import { secureFetch } from './utils/api';
 import { roleLevel, type NfmRole } from './utils/rbac';
 import { useT } from './i18n/i18n';
 import { LanguageToggle } from './i18n/LanguageToggle';
+import { useModalA11y } from './hooks/useModalA11y';
 
 import { 
   Network, 
@@ -60,6 +61,8 @@ interface DashboardGridProps {
 function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGridProps) {
   const { state, activeSiteId, setActiveSiteId, runningState, hasChanges, confirmDialog, closeConfirmation, isInitialImporting, initialImportPhase } = useTopology();
   const { t } = useT();
+  // Esc closes the confirm dialog and focus lands on Cancel (the safe default, not the destructive action).
+  const confirmDialogRef = useModalA11y(!!confirmDialog, closeConfirmation);
 
   const isAdmin = role === 'admin';
   const isViewer = roleLevel(role) < 2; // viewer: read-only
@@ -550,8 +553,8 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
       </footer>
 
       {confirmDialog && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-[#121214] border border-white/10 rounded-lg max-w-sm w-full p-5 shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]" onClick={closeConfirmation}>
+          <div ref={confirmDialogRef} tabIndex={-1} role="alertdialog" aria-modal="true" aria-label={t(confirmDialog.title)} onClick={(e) => e.stopPropagation()} className="bg-[#121214] border border-white/10 rounded-lg max-w-sm w-full p-5 shadow-2xl space-y-4 outline-none focus:outline-none">
             <div className="flex items-start gap-3">
               <div className="p-2.5 bg-rose-500/10 rounded-full text-rose-400 shrink-0 mt-0.5">
                 <AlertTriangle size={20} />

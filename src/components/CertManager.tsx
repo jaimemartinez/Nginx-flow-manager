@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTopology } from '../context/TopologyContext';
 import { secureFetch } from '../utils/api';
 import { useT } from '../i18n/i18n';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { ShieldCheck, X, RefreshCw, Plus, AlertTriangle, CheckCircle2, Loader2, Lock, Trash2 } from 'lucide-react';
 
 interface Cert {
@@ -25,6 +26,7 @@ interface CertManagerProps {
 }
 
 export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
+  const dialogRef = useModalA11y(open, onClose);
   const { askConfirmation } = useTopology();
   const { t } = useT();
 
@@ -151,7 +153,12 @@ export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
   return (
     <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-[#121214] border border-white/10 rounded-lg shadow-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden"
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('Certificados SSL (Let\'s Encrypt / certbot)')}
+        className="bg-[#121214] border border-white/10 rounded-lg shadow-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden outline-none focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -164,7 +171,7 @@ export const CertManager: React.FC<CertManagerProps> = ({ open, onClose }) => {
             <button onClick={fetchCerts} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/5 cursor-pointer" title={t('Refrescar')}>
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/5 cursor-pointer">
+            <button onClick={onClose} aria-label={t('Cerrar')} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/5 cursor-pointer">
               <X size={16} />
             </button>
           </div>

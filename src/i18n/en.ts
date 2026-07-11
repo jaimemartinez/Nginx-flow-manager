@@ -414,6 +414,8 @@ export const EN: Record<string, string> = {
   'Nginx ha auditado, compilado y activado esta versión sin advertencias.': 'Nginx has audited, compiled, and activated this version without warnings.',
   'Cerrar e Ir a Corregir Sintaxis': 'Close and Go Fix Syntax',
   'Cerrar y Regresar': 'Close and Return',
+  'Cerrar y Reintentar': 'Close and Retry',
+  'Validar y Confirmar cambios': 'Validate & Commit changes',
   'Operando transacciones...': 'Processing transactions...',
   // ── src/components/FileViewer.tsx ────────────────────────────────────────
   'Versiones': 'Versions',

@@ -12,6 +12,7 @@ import { Users, Plus, Trash2, KeyRound, ShieldCheck, X, AlertTriangle } from 'lu
 import { secureFetch } from '../utils/api';
 import { ROLES, type NfmRole } from '../utils/rbac';
 import { useT } from '../i18n/i18n';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface ApiUser { id: string; username: string; role: NfmRole; createdAt: string; }
 interface UserManagerProps { open: boolean; onClose: () => void; currentUsername: string | null; }
@@ -30,6 +31,7 @@ const roleClass: Record<NfmRole, string> = {
 
 export const UserManager: React.FC<UserManagerProps> = ({ open, onClose, currentUsername }) => {
   const { t } = useT();
+  const dialogRef = useModalA11y(open, onClose);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -108,12 +110,12 @@ export const UserManager: React.FC<UserManagerProps> = ({ open, onClose, current
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col bg-[#0A0A0B] border border-white/10 rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t('Gestión de usuarios')} className="w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col bg-[#0A0A0B] border border-white/10 rounded-lg shadow-2xl outline-none focus:outline-none" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <div className="flex items-center gap-2 text-slate-200 font-mono font-bold text-sm">
             <Users size={16} className="text-[#009639]" /> {t('Gestión de usuarios')}
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-200 cursor-pointer"><X size={18} /></button>
+          <button onClick={onClose} aria-label={t('Cerrar')} className="text-slate-500 hover:text-slate-200 cursor-pointer"><X size={18} /></button>
         </div>
 
         {err && (

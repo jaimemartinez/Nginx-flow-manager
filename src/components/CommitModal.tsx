@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { compileNginxTopology, simulateSymlinksReconciliation } from '../utils/nginxCompiler';
 import { useT } from '../i18n/i18n';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface CommitModalProps {
   isOpen: boolean;
@@ -65,6 +66,9 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
 
   const [commitModalPhase, setCommitModalPhase] = useState<'input' | 'progress'>('input');
   const [activeCommitStepIndex, setActiveCommitStepIndex] = useState(0);
+  // Esc closes only in the input phase — never mid-deploy (the 'progress' phase always exposes an
+  // explicit footer button instead). The hook also autofocuses the first field (commit message) on open.
+  const dialogRef = useModalA11y(isOpen && commitModalPhase === 'input', onClose);
   const [modalSteps, setModalSteps] = useState<Array<{
     label: string;
     description: string;
@@ -483,7 +487,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fade-in font-sans">
-      <div className="bg-[#121214] border border-white/10 rounded-xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t('Validar y Confirmar cambios')} className="bg-[#121214] border border-white/10 rounded-xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh] outline-none focus:outline-none">
         
         {commitModalPhase === 'input' ? (
           <div className="flex flex-col max-h-[90vh]">
@@ -974,6 +978,16 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                 >
                   <Check size={12} className="stroke-[3]" />
                   {t('Cerrar y Regresar')}
+                </button>
+              ) : modalSteps.some(s => s && s.status === 'failed') ? (
+                // A deploy step threw (network/exception) — offer a way out instead of an
+                // indefinite spinner. Returns to the editable input phase to retry.
+                <button
+                  type="button"
+                  onClick={() => setCommitModalPhase('input')}
+                  className="px-4 py-2 bg-gradient-to-r from-rose-500/10 to-rose-500/25 border border-rose-500/30 text-rose-300 hover:text-rose-200 transition-all rounded text-xs font-bold uppercase cursor-pointer"
+                >
+                  {t('Cerrar y Reintentar')}
                 </button>
               ) : (
                 <div className="text-[10px] text-slate-500 font-mono flex items-center gap-2 pr-2">

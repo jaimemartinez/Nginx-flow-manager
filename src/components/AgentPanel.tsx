@@ -5,12 +5,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { secureFetch } from '../utils/api';
 import { useT } from '../i18n/i18n';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { Cpu, X, RefreshCw, ShieldCheck, AlertTriangle, CheckCircle2, Loader2, Download, Trash2 } from 'lucide-react';
 
 interface AgentPanelProps { open: boolean; onClose: () => void; }
 
 export const AgentPanel: React.FC<AgentPanelProps> = ({ open, onClose }) => {
   const { t } = useT();
+  const dialogRef = useModalA11y(open, onClose);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -65,7 +67,7 @@ export const AgentPanel: React.FC<AgentPanelProps> = ({ open, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#121214] border border-white/10 rounded-lg shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t('Agente seguro del servidor')} className="bg-[#121214] border border-white/10 rounded-lg shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden outline-none focus:outline-none" onClick={(e) => e.stopPropagation()}>
         <div className="bg-[#0A0A0B] border-b border-white/10 px-5 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Cpu size={18} className="text-violet-400" />
@@ -73,7 +75,7 @@ export const AgentPanel: React.FC<AgentPanelProps> = ({ open, onClose }) => {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={fetchStatus} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/5 cursor-pointer"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} /></button>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/5 cursor-pointer"><X size={16} /></button>
+            <button onClick={onClose} aria-label={t('Cerrar')} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/5 cursor-pointer"><X size={16} /></button>
           </div>
         </div>
 

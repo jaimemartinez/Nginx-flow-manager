@@ -12,6 +12,7 @@ import { Server, Route, Network, Plus, Trash2, Shield, ShieldAlert, Settings, He
 import { secureFetch } from '../utils/api';
 import { htpasswdApr1 } from '../utils/htpasswd';
 import { useT } from '../i18n/i18n';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 function getNodeDimensions(type: string | undefined) {
   if (type === 'server') {
@@ -2787,6 +2788,7 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
   // derived view listing just the comment lines for quick scanning — editing it is not possible, so
   // no bucketing/reorder happens and imported blocks round-trip byte-identical.
   const [modalOpen, setModalOpen] = useState(false);
+  const modalRef = useModalA11y(modalOpen, () => setModalOpen(false));
   const [codeText, setCodeText] = useState('');
   const commentsText = extractComments(codeText); // read-only derived view
 
@@ -2934,7 +2936,12 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="bg-[#121214] border border-amber-500/30 rounded-xl max-w-3xl w-full shadow-2xl flex flex-col max-h-[88vh]"
+            ref={modalRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('Editor de Config Cruda')}
+            className="bg-[#121214] border border-amber-500/30 rounded-xl max-w-3xl w-full shadow-2xl flex flex-col max-h-[88vh] outline-none focus:outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
