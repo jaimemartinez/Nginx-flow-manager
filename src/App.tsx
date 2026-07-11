@@ -284,7 +284,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
             className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded text-xs font-bold transition-all cursor-pointer shrink-0 ${
               hasChanges 
                 ? 'bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/35 text-amber-300 hover:text-white animate-pulse' 
-                : 'bg-[#009639]/10 border border-[#009639]/30 hover:bg-[#009639]/20 text-emerald-400 hover:text-emerald-350'
+                : 'bg-[#009639]/10 border border-[#009639]/30 hover:bg-[#009639]/20 text-emerald-400 hover:text-emerald-300'
             }`}
             title={hasChanges ? t("¡Tienes cambios en borrador! Haz click para Validar & Confirmar") : t("Validar sintaxis & Confirmar configuración")}
           >
@@ -305,8 +305,8 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
             title={t("Ver historial de versiones de configuración")}
           >
             <History size={14} className="text-slate-500" />
-            <span className="hidden xs:inline">{t("Ver Historial")}</span>
-            <span className="xs:hidden">{t("Historial")}</span>
+            <span className="hidden sm:inline">{t("Ver Historial")}</span>
+            <span className="sm:hidden">{t("Historial")}</span>
           </button>
         </div>
 
@@ -548,7 +548,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
           ⚖️ Apache-2.0 License • Enterprise Ready Multi-Site Manager
         </span>
         <span className="flex items-center gap-1 select-all text-[9px] font-mono">
-          SYSTEM OK // WORKFLOW_ID: x882-prod // Target: /etc/nginx
+          Nginx Flow Manager v1.2.0 // Target: /etc/nginx
         </span>
       </footer>
 

@@ -543,7 +543,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                 {isValidating ? (
                   <div className="p-8 text-center space-y-3 bg-[#0A0A0B] border border-white/5 rounded-lg">
                     <Loader2 size={24} className="animate-spin text-sky-400 mx-auto" />
-                    <p className="text-xs text-slate-350 font-mono">{t('Ejecutando validación aislada en el servidor...')}</p>
+                    <p className="text-xs text-slate-400 font-mono">{t('Ejecutando validación aislada en el servidor...')}</p>
                   </div>
                 ) : validationResult ? (
                   <div className={`p-4 rounded-lg border text-xs space-y-2.5 leading-relaxed ${
@@ -583,11 +583,11 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                 {/* Nginx OS Status */}
                 {nginxOSStatus && (
                   <div className="bg-[#0A0A0B] border border-white/5 rounded-lg p-4 space-y-3">
-                    <span className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider font-mono">
+                    <span className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider font-mono">
                       {t('Estado del Servidor Nginx')}
                     </span>
                     
-                    <div className="bg-[#121214] border border-white/5 rounded p-3 space-y-2 font-mono text-[9px] text-slate-350">
+                    <div className="bg-[#121214] border border-white/5 rounded p-3 space-y-2 font-mono text-[9px] text-slate-400">
                       <div className="flex justify-between items-center border-b border-white/5 pb-1.5 mb-1.5">
                         <span className="text-slate-500 font-bold uppercase">Daemon OS:</span>
                         <span className="text-emerald-400 font-bold flex items-center gap-1">
@@ -651,7 +651,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                                     ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 opacity-85 cursor-default'
                                     : loaderMap[opt.pName]
                                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 font-bold animate-pulse'
-                                    : 'bg-[#121214] border-white/5 text-slate-350 hover:bg-slate-800 hover:border-slate-500/50'
+                                    : 'bg-[#121214] border-white/5 text-slate-400 hover:bg-slate-800 hover:border-slate-500/50'
                                 }`}
                               >
                                 <span className="truncate mr-1">{opt.label}</span>
@@ -660,7 +660,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                                 ) : loaderMap[opt.pName] ? (
                                   <Loader2 size={10} className="shrink-0 animate-spin text-amber-400" />
                                 ) : (
-                                  <Plus size={10} className="shrink-0 text-slate-550" />
+                                  <Plus size={10} className="shrink-0 text-slate-500" />
                                 )}
                               </button>
                             );
@@ -749,19 +749,19 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                     <div className="space-y-4">
                       {/* Summary of local changes (Sincronizado) */}
                       <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3.5 space-y-2">
-                        <div className="flex items-center gap-2 text-emerald-450 text-xs font-bold font-mono">
+                        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold font-mono">
                           <CheckCircle2 size={14} className="text-emerald-400" />
                           <span>{t('Borrador Sincronizado')}</span>
                         </div>
                         
-                        <div className="text-[10px] font-mono text-emerald-350/90 bg-black/30 p-2.5 rounded border border-emerald-500/5">
+                        <div className="text-[10px] font-mono text-emerald-300/90 bg-black/30 p-2.5 rounded border border-emerald-500/5">
                           {t('• No hay cambios pendientes por confirmar en el borrador local.')}
                         </div>
                       </div>
 
                       {/* Active running version card */}
                       <div className="bg-[#121214] border border-white/5 rounded-lg p-3.5 space-y-2.5">
-                        <span className="block text-[10px] text-slate-550 uppercase font-bold tracking-wider font-mono">
+                        <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider font-mono">
                           {t('Versión Activa en Servidor')}
                         </span>
 
@@ -772,10 +772,10 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-400 font-mono">
                               <div>
-                                <span className="text-slate-550">{t('Operador:')}</span> {runningCommit.author}
+                                <span className="text-slate-500">{t('Operador:')}</span> {runningCommit.author}
                               </div>
                               <div>
-                                <span className="text-slate-550">{t('Desplegado:')}</span> {new Date(runningCommit.timestamp).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', {
+                                <span className="text-slate-500">{t('Desplegado:')}</span> {new Date(runningCommit.timestamp).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', {
                                   day: '2-digit',
                                   month: 'short',
                                   hour: '2-digit',
@@ -785,7 +785,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                             </div>
                           </div>
                         ) : (
-                          <p className="text-[10px] text-slate-550 italic">{t('No hay registros de versiones cargadas.')}</p>
+                          <p className="text-[10px] text-slate-500 italic">{t('No hay registros de versiones cargadas.')}</p>
                         )}
                       </div>
                     </div>
@@ -806,7 +806,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-350 hover:text-white transition-all rounded text-xs font-bold uppercase cursor-pointer"
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white transition-all rounded text-xs font-bold uppercase cursor-pointer"
               >
                 {t('Cerrar')}
               </button>
@@ -870,7 +870,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                           </div>
                         )}
                         {isRunning && (
-                          <div className="w-5 h-5 rounded-full bg-sky-500/10 border border-sky-400 flex items-center justify-center text-sky-450 animate-spin">
+                          <div className="w-5 h-5 rounded-full bg-sky-500/10 border border-sky-400 flex items-center justify-center text-sky-400 animate-spin">
                             <Loader2 size={11} />
                           </div>
                         )}
@@ -890,14 +890,14 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                               : isFailed 
                                 ? 'text-rose-400' 
                                 : isRunning 
-                                  ? 'text-sky-450' 
+                                  ? 'text-sky-400' 
                                   : 'text-slate-400'
                           }`}>
                             {step.label}
                           </span>
                           <span className="text-[9px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded">
                             {isSuccess && <span className="text-emerald-400">{t('Completado')}</span>}
-                            {isFailed && <span className="text-rose-450 font-bold">{t('Fallido')}</span>}
+                            {isFailed && <span className="text-rose-400 font-bold">{t('Fallido')}</span>}
                             {isRunning && <span className="text-sky-400 animate-pulse">{t('Procesándolo')}</span>}
                             {isIdle && <span className="text-slate-600">{t('En espera')}</span>}
                           </span>
@@ -936,7 +936,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                       {t('Sintaxis Error')}
                     </span>
                   </div>
-                  <pre className="p-3 text-[9.5px] font-mono leading-relaxed text-rose-300/90 overflow-x-auto max-h-[170px] whitespace-pre-wrap select-text text-slate-350">
+                  <pre className="p-3 text-[9.5px] font-mono leading-relaxed text-rose-300/90 overflow-x-auto max-h-[170px] whitespace-pre-wrap select-text text-slate-400">
                     {(() => {
                       const rawLog = validationResult.stderr || validationResult.stdout || (validationResult.message ? t(validationResult.message) : '');
                       return rawLog.replace(/\/tmp\/nginx-sandbox-[a-z0-9-]+\/(etc\/nginx\/)?/gi, '/etc/nginx/');

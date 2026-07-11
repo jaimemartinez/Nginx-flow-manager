@@ -171,7 +171,7 @@ export const VersionManager: React.FC = () => {
                     }
                   );
                 }}
-                className="w-full py-1.5 bg-white/5 hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/20 text-slate-350 hover:text-rose-400 rounded text-[10px] font-bold uppercase cursor-pointer transition-all flex items-center justify-center gap-1"
+                className="w-full py-1.5 bg-white/5 hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 rounded text-[10px] font-bold uppercase cursor-pointer transition-all flex items-center justify-center gap-1"
               >
                 <RotateCcw size={10} />
                 {t('Descartar')}
@@ -283,7 +283,7 @@ export const VersionManager: React.FC = () => {
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('nginx-flow-view-commit', { detail: commit }));
                     }}
-                    className="px-2.5 py-1 bg-sky-500/5 hover:bg-sky-500/15 text-slate-400 hover:text-sky-405 border border-white/10 hover:border-sky-500/20 rounded text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1 bg-sky-500/5 hover:bg-sky-500/15 text-slate-400 hover:text-sky-400 border border-white/10 hover:border-sky-500/20 rounded text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer"
                     title={t('Inspeccionar archivos y diff de esta versión sin cambiar tu borrador')}
                   >
                     <ScrollText size={9} />

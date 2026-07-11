@@ -335,7 +335,7 @@ export const FileViewer: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#121214] border border-white/10 rounded-lg flex flex-col overflow-hidden h-full text-slate-350 font-sans">
+    <div className="bg-[#121214] border border-white/10 rounded-lg flex flex-col overflow-hidden h-full text-slate-400 font-sans">
       
       {/* FileViewer Tabs */}
       <div className="bg-[#0A0A0B] border-b border-white/10 px-4 py-2.5 flex items-center justify-between shrink-0">
@@ -705,7 +705,7 @@ export const FileViewer: React.FC = () => {
                 />
               ) : viewMode === 'diff' ? (
                 diffStats.add === 0 && diffStats.del === 0 ? (
-                  <div className="flex-1 flex items-center justify-center text-slate-650 italic gap-2">
+                  <div className="flex-1 flex items-center justify-center text-slate-600 italic gap-2">
                     <Check size={14} className="text-emerald-400" /> {t('Sin diferencias — candidate idéntico a running para este archivo')}
                   </div>
                 ) : (
@@ -728,7 +728,7 @@ export const FileViewer: React.FC = () => {
               ) : activeContent ? (
                 <>
                   {/* Line numbers index spacer */}
-                  <div className="text-slate-650 text-right pr-4 select-none border-r border-white/5 mr-4 min-w-[28px] shrink-0 text-[10px]">
+                  <div className="text-slate-600 text-right pr-4 select-none border-r border-white/5 mr-4 min-w-[28px] shrink-0 text-[10px]">
                     {displayContent.split('\n').map((_, i) => (
                       <div key={i}>{i + 1}</div>
                     ))}
@@ -740,7 +740,7 @@ export const FileViewer: React.FC = () => {
                   </pre>
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-slate-650 italic">
+                <div className="flex-1 flex items-center justify-center text-slate-600 italic">
                   Configuration node file empty
                 </div>
               )}
@@ -811,7 +811,7 @@ export const FileViewer: React.FC = () => {
             {logContent ? (
               <pre className="text-slate-300 whitespace-pre-wrap break-all select-text">{logContent}</pre>
             ) : (
-              <div className="flex items-center justify-center text-slate-650 italic h-full">
+              <div className="flex items-center justify-center text-slate-600 italic h-full">
                 {logLoading ? t('Cargando logs...') : t('Sin entradas de log (o archivo no accesible vía SSH).')}
               </div>
             )}
@@ -823,7 +823,7 @@ export const FileViewer: React.FC = () => {
         </div>
       ) : activeTab === 'terminal' ? (
         /* HIGH FIDELITY RECONCILIATION TERMINAL CONSOLE VIEW */
-        <div className="flex-1 bg-[#0A0A0B] p-4 font-mono text-xs text-slate-350 overflow-auto flex flex-col space-y-4">
+        <div className="flex-1 bg-[#0A0A0B] p-4 font-mono text-xs text-slate-400 overflow-auto flex flex-col space-y-4">
           
           <div className="bg-[#009639]/5 border border-[#009639]/20 p-3.5 rounded flex gap-2.5">
             <Info size={16} className="text-[#009639] flex-shrink-0 mt-0.5" />
@@ -851,7 +851,7 @@ export const FileViewer: React.FC = () => {
             {/* Terminal output streams */}
             <div className="flex-1 p-3 space-y-3 overflow-y-auto select-text text-[11px]">
               {(realLogs.length > 0 ? realLogs : bashLogs).map((log, index) => {
-                let badgeStyle = 'text-slate-550';
+                let badgeStyle = 'text-slate-500';
                 if (log.type === 'success') badgeStyle = 'text-emerald-400 font-bold';
                 if (log.type === 'warn') badgeStyle = 'text-amber-500 font-bold';
                 if (log.type === 'error') badgeStyle = 'text-rose-455 font-bold';
@@ -872,7 +872,7 @@ export const FileViewer: React.FC = () => {
               
               <div className="flex items-center gap-2 pt-2 border-t border-white/15">
                 <span className="text-emerald-500 animate-pulse">●</span>
-                <span className="text-slate-550 italic">
+                <span className="text-slate-500 italic">
                   {realLogs.length > 0
                     ? t("Daemon hot-reloader activo en tiempo real. Logs del sistema sincronizados.")
                     : t("Esperando confirmación de borrador o cambios en caliente...")}

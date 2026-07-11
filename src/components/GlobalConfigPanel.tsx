@@ -91,7 +91,7 @@ export const GlobalConfigPanel: React.FC = () => {
         <button
           onClick={handleSyncGlobal}
           disabled={isSyncing}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-emerald-400 border border-[#009639]/20 rounded font-mono transition-all hover:border-[#009639]/50 disabled:opacity-55 cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-emerald-400 border border-[#009639]/20 rounded font-mono transition-all hover:border-[#009639]/50 disabled:opacity-50 cursor-pointer"
           title={t('Sincronizar y cargar la configuración del archivo nginx.conf actual del sistema')}
         >
           <RefreshCw size={10} className={isSyncing ? 'animate-spin' : ''} />

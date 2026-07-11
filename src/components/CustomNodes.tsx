@@ -323,7 +323,7 @@ const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [],
           <button
             type="button"
             onClick={addHeader}
-            className="nodrag text-[9px] text-emerald-450 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
+            className="nodrag text-[9px] text-emerald-400 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
           >
             <Plus size={10} /> {t('Añadir')}
           </button>
@@ -351,7 +351,7 @@ const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [],
                     <button
                       type="button"
                       onClick={(e) => removeHeader(e, h.id)}
-                      className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1"
+                      className="nodrag text-slate-500 hover:text-rose-400 transition-colors p-1"
                       title={t('Eliminar Cabecera')}
                     >
                       <Trash2 size={11} />
@@ -372,7 +372,7 @@ const CustomHeadersEditor: React.FC<CustomHeadersEditorProps> = ({ headers = [],
                         onChange={(e) => updateHeader(h.id, 'always', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                       <span className="text-[8px] text-slate-400 font-bold" title="add_header ... always;">Always</span>
                     </label>
                   </div>
@@ -422,7 +422,7 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
           <button
             type="button"
             onClick={addRule}
-            className="nodrag text-[9px] text-emerald-450 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
+            className="nodrag text-[9px] text-emerald-400 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
           >
             <Plus size={10} /> {t('Añadir')}
           </button>
@@ -457,7 +457,7 @@ const AccessControlEditor: React.FC<AccessControlEditorProps> = ({ rules = [], o
                   <button
                     type="button"
                     onClick={(e) => removeRule(e, r.id)}
-                    className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1"
+                    className="nodrag text-slate-500 hover:text-rose-400 transition-colors p-1"
                     title={t('Eliminar regla')}
                   >
                     <Trash2 size={11} />
@@ -595,7 +595,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                 <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">{t('Área / Realm (auth_basic)')}</label>
                 <input
                   type="text"
-                  className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-250 text-[10px] w-full focus:outline-none focus:border-[#009639]"
+                  className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] w-full focus:outline-none focus:border-[#009639]"
                   value={auth_basic}
                   onChange={(e) => onChange('auth_basic', e.target.value)}
                   placeholder="Restricted Area"
@@ -675,7 +675,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                 <label className="block text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">{t('Ruta Subrequest (auth_request)')}</label>
                 <input
                   type="text"
-                  className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-250 text-[10px] w-full focus:outline-none focus:border-[#009639]"
+                  className="nodrag bg-[#121214] border border-white/10 rounded px-2 py-1 text-slate-300 text-[10px] w-full focus:outline-none focus:border-[#009639]"
                   value={auth_request_uri}
                   onChange={(e) => onChange('auth_request_uri', e.target.value)}
                   placeholder="e.g. /auth-verify"
@@ -691,7 +691,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                   <button
                     type="button"
                     onClick={addForwardHeader}
-                    className="nodrag text-[8px] text-emerald-450 hover:text-emerald-300 font-bold transition-colors flex items-center gap-0.5 bg-emerald-400/5 px-1 py-0.5 border border-emerald-400/20 rounded"
+                    className="nodrag text-[8px] text-emerald-400 hover:text-emerald-300 font-bold transition-colors flex items-center gap-0.5 bg-emerald-400/5 px-1 py-0.5 border border-emerald-400/20 rounded"
                   >
                     <Plus size={8} /> {t('Añadir')}
                   </button>
@@ -720,7 +720,7 @@ const CustomAuthEditor: React.FC<CustomAuthEditorProps> = ({
                             <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">{t('Var Interna')}</span>
                             <input
                               type="text"
-                              className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1.5 py-0.5 text-slate-350 text-[9px] w-full focus:outline-none"
+                              className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1.5 py-0.5 text-slate-400 text-[9px] w-full focus:outline-none"
                               value={hf.variable}
                               onChange={(e) => updateForwardHeader(idx, 'variable', e.target.value)}
                               placeholder="auth_user"
@@ -810,7 +810,7 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
           <button
             type="button"
             onClick={addRewrite}
-            className="nodrag text-[9px] text-emerald-450 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
+            className="nodrag text-[9px] text-emerald-400 hover:text-emerald-300 font-bold font-mono transition-colors flex items-center gap-0.5 border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 rounded cursor-pointer"
           >
             <Plus size={10} /> {t('Añadir')}
           </button>
@@ -841,13 +841,13 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
                             onChange={(e) => updateRewrite(r.id, 'enabled', e.target.checked)}
                             className="sr-only peer"
                           />
-                          <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                          <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                           <span className="text-[7px] text-slate-400 font-bold">{r.enabled ? t('Activa') : 'Off'}</span>
                         </label>
                         <button
                           type="button"
                           onClick={(e) => removeRewrite(e, r.id)}
-                          className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1"
+                          className="nodrag text-slate-500 hover:text-rose-400 transition-colors p-1"
                           title={t('Eliminar regla')}
                         >
                           <Trash2 size={11} />
@@ -876,7 +876,7 @@ const CustomRewriteEditor: React.FC<CustomRewriteEditorProps> = ({ rewrites = []
                         placeholder="e.g. ^/users/(.*)$"
                       />
                       {!isValid && error && (
-                        <p className="text-[7.5px] text-rose-450 mt-0.5 leading-tight italic truncate" title={error}>
+                        <p className="text-[7.5px] text-rose-400 mt-0.5 leading-tight italic truncate" title={error}>
                           {error}
                         </p>
                       )}
@@ -1023,7 +1023,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                   onChange={(e) => onChange('ssl_force_redirect', e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                 <span className="text-[7.5px] text-slate-400 font-bold">{ssl_force_redirect ? t('Sí') : t('No')}</span>
               </label>
             </div>
@@ -1044,7 +1044,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                     onChange={(e) => onChange('hsts_enabled', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                  <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                   <span className="text-[7.5px] text-slate-400 font-bold">{hsts_enabled ? 'On' : 'Off'}</span>
                 </label>
               </div>
@@ -1068,7 +1068,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                         onChange={(e) => onChange('hsts_include_subdomains', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                       <span className="text-[7px] text-slate-400 font-bold">includeSubDomains</span>
                     </label>
                     <label className="nodrag flex items-center gap-1 cursor-pointer select-none">
@@ -1078,7 +1078,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                         onChange={(e) => onChange('hsts_preload', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                       <span className="text-[7px] text-slate-400 font-bold">preload</span>
                     </label>
                   </div>
@@ -1098,7 +1098,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                   onChange={(e) => onChange('cors_enabled', e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                 <span className="text-[7.5px] text-slate-400 font-bold">{cors_enabled ? 'On' : 'Off'}</span>
               </label>
             </div>
@@ -1127,7 +1127,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                   onChange={(e) => onChange('rate_limit_enabled', e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                 <span className="text-[7.5px] text-slate-400 font-bold">{rate_limit_enabled ? t('Activo') : t('Inactivo')}</span>
               </label>
             </div>
@@ -1185,7 +1185,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                         onChange={(e) => onChange('rate_limit_nodelay', e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+                      <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
                       <span className="text-[7.5px] text-slate-400 font-bold">{rate_limit_nodelay ? 'nodelay' : 'delay'}</span>
                     </label>
                   </div>
@@ -1223,14 +1223,14 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
               <button
                 type="button"
                 onClick={addErrorPage}
-                className="nodrag text-[8px] text-emerald-450 hover:text-emerald-300 font-bold transition-colors flex items-center gap-0.5 bg-emerald-400/5 px-1.5 py-0.5 border border-emerald-400/20 rounded cursor-pointer"
+                className="nodrag text-[8px] text-emerald-400 hover:text-emerald-300 font-bold transition-colors flex items-center gap-0.5 bg-emerald-400/5 px-1.5 py-0.5 border border-emerald-400/20 rounded cursor-pointer"
               >
                 <Plus size={9} /> {t('Añadir')}
               </button>
             </div>
 
             {error_pages.length === 0 ? (
-              <div className="text-[8px] text-slate-650 italic text-center py-1">
+              <div className="text-[8px] text-slate-600 italic text-center py-1">
                 {t('Sin páginas de error configuradas.')}
               </div>
             ) : (
@@ -1242,7 +1242,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                         <span className="text-[7px] text-slate-500 block font-bold leading-none mb-0.5">{t('Código')}</span>
                         <input
                           type="text"
-                          className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1 py-0.5 text-slate-350 text-[9px] w-full focus:outline-none"
+                          className="nodrag bg-[#0C0C0D] border border-white/5 rounded px-1 py-0.5 text-slate-400 text-[9px] w-full focus:outline-none"
                           value={ep.code}
                           onChange={(e) => updateErrorPage(idx, 'code', e.target.value)}
                           placeholder="404"
@@ -1262,7 +1262,7 @@ const CustomAdvancedDirectivesEditor: React.FC<CustomAdvancedDirectivesEditorPro
                     <button
                       type="button"
                       onClick={(e) => removeErrorPage(e, idx)}
-                      className="nodrag text-slate-500 hover:text-rose-450 p-1 shrink-0 mt-3"
+                      className="nodrag text-slate-500 hover:text-rose-400 p-1 shrink-0 mt-3"
                     >
                       <Trash2 size={10} />
                     </button>
@@ -1499,7 +1499,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
           </div>
           <div>
             <h4 className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Server Block</h4>
-            <span className="text-[9px] font-mono font-medium py-0.5 px-1.5 bg-[#0A0A0B] border border-white/5 rounded text-slate-350">
+            <span className="text-[9px] font-mono font-medium py-0.5 px-1.5 bg-[#0A0A0B] border border-white/5 rounded text-slate-400">
               Virtual Host Root
             </span>
           </div>
@@ -1548,7 +1548,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
                   onChange={(e) => updateNodeData(activeSiteId, id, { ssl: e.target.checked, listen_directives: undefined })}
                   className="sr-only peer"
                 />
-                <div className="w-9 h-5 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white pointer-events-none"></div>
+                <div className="w-9 h-5 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white pointer-events-none"></div>
                 <span className="ml-2 text-xs font-mono font-bold text-slate-300">
                   {data.ssl ? 'SSL' : 'Plain'}
                 </span>
@@ -1582,7 +1582,7 @@ export const ServerNode: React.FC<NodeProps<Node<ServerNodeData, 'server'>>> = (
                 onChange={(e) => handleChange('http2', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+              <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
               <span className="text-[7.5px] text-slate-400 font-bold">{data.http2 ? 'On' : 'Off'}</span>
             </label>
           </div>
@@ -1685,7 +1685,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
           </div>
           <div>
             <h4 className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Routing Location</h4>
-            <span className="text-[9px] font-mono font-medium py-0.5 px-1.5 bg-[#0A0A0B] border border-white/5 rounded text-slate-350">
+            <span className="text-[9px] font-mono font-medium py-0.5 px-1.5 bg-[#0A0A0B] border border-white/5 rounded text-slate-400">
               {t('Directiva location')}
             </span>
           </div>
@@ -1949,7 +1949,7 @@ export const LocationNode: React.FC<NodeProps<Node<LocationNodeData, 'location'>
                 onChange={(e) => handleChange('websocket_enabled', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-350 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
+              <div className="w-5 h-3 bg-[#0A0A0B] border border-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-slate-500 after:border-slate-400 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-[#009639] peer-checked:after:bg-white relative"></div>
               <span className="text-[7.5px] text-slate-400 font-bold">{data.websocket_enabled ? 'On' : 'Off'}</span>
             </label>
           </div>
@@ -2059,7 +2059,7 @@ export const UpstreamNode: React.FC<NodeProps<Node<UpstreamNodeData, 'upstream'>
           </div>
           <div>
             <h4 className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Balancer Pool</h4>
-            <span className="text-[9px] font-mono font-medium py-0.5 px-1.5 bg-[#0A0A0B] border border-white/5 rounded text-slate-350">
+            <span className="text-[9px] font-mono font-medium py-0.5 px-1.5 bg-[#0A0A0B] border border-white/5 rounded text-slate-400">
               upstream block
             </span>
           </div>
@@ -2140,7 +2140,7 @@ export const UpstreamNode: React.FC<NodeProps<Node<UpstreamNodeData, 'upstream'>
                   type="button"
                   onClick={() => handleRemoveServer(srv.id)}
                   disabled={data.servers.length <= 1}
-                  className={`col-span-2 nodrag flex items-center justify-center text-slate-500 px-1 py-0.5 rounded ${data.servers.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:text-rose-450 hover:bg-white/5'}`}
+                  className={`col-span-2 nodrag flex items-center justify-center text-slate-500 px-1 py-0.5 rounded ${data.servers.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:text-rose-400 hover:bg-white/5'}`}
                 >
                   <Trash2 size={11} />
                 </button>
@@ -2443,7 +2443,7 @@ export const GlobalStreamNode: React.FC<NodeProps<Node<any, 'global_stream'>>> =
           />
           <button 
             onClick={() => removeNode('__global__', id)}
-            className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1 cursor-pointer"
+            className="nodrag text-slate-500 hover:text-rose-400 transition-colors p-1 cursor-pointer"
             title="Delete Stream Proxy Node"
           >
             <Trash2 size={13} />
@@ -2533,7 +2533,7 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
         </div>
         <button 
           onClick={() => removeNode(activeSiteId, id)}
-          className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1 cursor-pointer"
+          className="nodrag text-slate-500 hover:text-rose-400 transition-colors p-1 cursor-pointer"
           title="Delete Custom Module Node"
         >
           <Trash2 size={13} />
@@ -2714,7 +2714,7 @@ export const CustomModuleNode: React.FC<NodeProps<Node<any, 'custom_module'>>> =
 
         {moduleType === 'http-headers-more' && (
           <div className="space-y-2 bg-[#0A0A0B] p-2.5 rounded border border-white/5 text-xs space-y-1.5">
-            <span className="block text-[9px] uppercase tracking-wider text-sky-450 font-mono font-bold font-semibold">{t('Modificador Advanced Headers')}</span>
+            <span className="block text-[9px] uppercase tracking-wider text-sky-400 font-mono font-bold font-semibold">{t('Modificador Advanced Headers')}</span>
             <div className="grid grid-cols-2 gap-1.5">
               <div>
                 <label className="block text-[8px] text-slate-500 uppercase font-bold">{t('Acción')}</label>
@@ -2843,7 +2843,7 @@ export const RawConfigNode: React.FC<NodeProps<Node<any, 'raw_config'>>> = ({ id
           </button>
           <button
             onClick={() => removeNode(activeSiteId, id)}
-            className="nodrag text-slate-500 hover:text-rose-450 transition-colors p-1 cursor-pointer"
+            className="nodrag text-slate-500 hover:text-rose-400 transition-colors p-1 cursor-pointer"
             title={t('Eliminar nodo de config cruda')}
           >
             <Trash2 size={13} />

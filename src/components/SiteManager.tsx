@@ -150,7 +150,7 @@ export const SiteManager: React.FC = () => {
                   {/* Filename & Edit */}
                   <div className="flex items-center justify-between gap-1.5 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <FileText size={13} className={isActive ? 'text-[#009639]' : 'text-slate-550'} />
+                      <FileText size={13} className={isActive ? 'text-[#009639]' : 'text-slate-500'} />
                       
                       {isEditing ? (
                         <input
@@ -194,7 +194,7 @@ export const SiteManager: React.FC = () => {
                         </button>
                         <button
                           onClick={() => setEditingSiteId(null)}
-                          className="text-[10px] font-mono text-slate-500 hover:text-slate-350"
+                          className="text-[10px] font-mono text-slate-500 hover:text-slate-400"
                         >
                           Cancel
                         </button>

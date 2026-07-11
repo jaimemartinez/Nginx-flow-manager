@@ -608,7 +608,7 @@ export const NginxCanvas: React.FC = () => {
           {/* Reset button */}
           <button
             onClick={handleClearCanvas}
-            className="p-1 px-1.5 text-[10px] font-mono text-slate-500 hover:text-rose-450 hover:bg-rose-500/10 rounded transition-all cursor-pointer"
+            className="p-1 px-1.5 text-[10px] font-mono text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all cursor-pointer"
             title="Wipe canvas elements"
           >
             Clear

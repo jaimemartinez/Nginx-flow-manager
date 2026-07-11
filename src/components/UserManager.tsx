@@ -137,7 +137,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ open, onClose, current
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <input type="password" autoFocus value={resetPw} onChange={(e) => setResetPw(e.target.value)} placeholder={t('nueva contraseña (≥8)')}
                       className="flex-1 bg-[#0A0A0B] border border-white/10 rounded px-2 py-1 text-[10px] text-slate-200 font-mono" />
-                    <button disabled={busy === u.id} onClick={() => resetPassword(u)} className="text-[9px] font-bold uppercase bg-[#009639] hover:bg-[#00b347] text-white px-2 py-1 rounded cursor-pointer disabled:opacity-50">{t('Guardar')}</button>
+                    <button disabled={busy === u.id} onClick={() => resetPassword(u)} className="text-[9px] font-bold uppercase bg-[#009639] hover:bg-[#007b2e] text-white px-2 py-1 rounded cursor-pointer disabled:opacity-50">{t('Guardar')}</button>
                     <button onClick={() => { setResetId(null); setResetPw(''); }} className="text-[9px] text-slate-500 hover:text-slate-300 px-1 cursor-pointer">{t('Cancelar')}</button>
                   </div>
                 )}
@@ -166,7 +166,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ open, onClose, current
               {ROLES.slice().reverse().map((r) => <option key={r} value={r}>{t(ROLE_LABEL[r])}</option>)}
             </select>
             <button disabled={busy === 'new' || !nu.trim() || np.length < 8} onClick={createUser}
-              className="flex items-center gap-1 bg-[#009639] hover:bg-[#00b347] disabled:opacity-40 text-white text-[10px] font-bold uppercase px-2.5 py-1.5 rounded cursor-pointer">
+              className="flex items-center gap-1 bg-[#009639] hover:bg-[#007b2e] disabled:opacity-50 text-white text-[10px] font-bold uppercase px-2.5 py-1.5 rounded cursor-pointer">
               <Plus size={12} /> {t('Añadir')}
             </button>
           </div>
