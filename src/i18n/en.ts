@@ -585,6 +585,8 @@ export const EN: Record<string, string> = {
   '/etc/letsencrypt/live/midominio.com/fullchain.pem': '/etc/letsencrypt/live/mydomain.com/fullchain.pem',
   '/etc/letsencrypt/live/midominio.com/privkey.pem': '/etc/letsencrypt/live/mydomain.com/privkey.pem',
   // ── src/components/AgentPanel.tsx ────────────────────────────────────────
+  'Desinstalar el agente del servidor': 'Uninstall the server agent',
+  'Se revertirán TODOS los cambios: usuario nfm-agent (y su clave forzada), binario /usr/local/bin/nfm-agent, regla sudoers, unidades systemd, directorios de estado y las credenciales locales.\n\nNode.js NO se elimina (es un runtime compartido). La app volverá a gestionar nginx por SSH directo.': 'ALL changes will be reverted: the nfm-agent user (and its forced key), the /usr/local/bin/nfm-agent binary, the sudoers rule, systemd units, state directories and the local credentials.\n\nNode.js is NOT removed (it is a shared runtime). The app will go back to managing nginx over direct SSH.',
   'Instalando y verificando el agente en el servidor...': 'Installing and verifying the agent on the server...',
   'No aplica (no estás en modo remoto).': 'Not applicable (you are not in remote mode).',
   'Agente instalado y verificado up & running ✓': 'Agent installed and verified up & running ✓',
@@ -604,6 +606,7 @@ export const EN: Record<string, string> = {
   'Desinstalar': 'Uninstall',
   // ── src/components/UserManager.tsx ───────────────────────────────────────
   'Gestión de usuarios': 'User management',
+  'Se eliminará permanentemente al usuario "{0}". Esta acción es irreversible.': 'User "{0}" will be permanently deleted. This action cannot be undone.',
   'Cargando…': 'Loading…',
   '(tú)': '(you)',
   'nueva contraseña (≥8)': 'new password (≥8)',

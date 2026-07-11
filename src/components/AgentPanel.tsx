@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { secureFetch } from '../utils/api';
+import { useTopology } from '../context/TopologyContext';
 import { useT } from '../i18n/i18n';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { Cpu, X, RefreshCw, ShieldCheck, AlertTriangle, CheckCircle2, Loader2, Download, Trash2 } from 'lucide-react';
@@ -12,6 +13,7 @@ interface AgentPanelProps { open: boolean; onClose: () => void; }
 
 export const AgentPanel: React.FC<AgentPanelProps> = ({ open, onClose }) => {
   const { t } = useT();
+  const { askConfirmation } = useTopology();
   const dialogRef = useModalA11y(open, onClose);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -47,19 +49,22 @@ export const AgentPanel: React.FC<AgentPanelProps> = ({ open, onClose }) => {
     finally { setBusy(false); }
   };
 
-  const uninstall = async () => {
-    if (!window.confirm(
-      t('¿Desinstalar el agente del servidor?\n\nSe revertirán TODOS los cambios: usuario nfm-agent (y su clave forzada), binario /usr/local/bin/nfm-agent, regla sudoers, unidades systemd, directorios de estado y las credenciales locales.\n\nNode.js NO se elimina (es un runtime compartido). La app volverá a gestionar nginx por SSH directo.')
-    )) return;
-    setBusy(true); setSteps([]); setMsg(t('Desinstalando el agente y revirtiendo los cambios...'));
-    try {
-      const r = await secureFetch('/api/agent/uninstall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      const d = await r.json();
-      setSteps(d.steps || []);
-      setMsg(d.success ? t('Agente desinstalado y cambios revertidos ✓') : t('Desinstalación incompleta: {0}', d.error || ''));
-      await fetchStatus();
-    } catch (e: any) { setMsg(t('Error: {0}', e.message)); }
-    finally { setBusy(false); }
+  const uninstall = () => {
+    askConfirmation(
+      t('Desinstalar el agente del servidor'),
+      t('Se revertirán TODOS los cambios: usuario nfm-agent (y su clave forzada), binario /usr/local/bin/nfm-agent, regla sudoers, unidades systemd, directorios de estado y las credenciales locales.\n\nNode.js NO se elimina (es un runtime compartido). La app volverá a gestionar nginx por SSH directo.'),
+      async () => {
+        setBusy(true); setSteps([]); setMsg(t('Desinstalando el agente y revirtiendo los cambios...'));
+        try {
+          const r = await secureFetch('/api/agent/uninstall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+          const d = await r.json();
+          setSteps(d.steps || []);
+          setMsg(d.success ? t('Agente desinstalado y cambios revertidos ✓') : t('Desinstalación incompleta: {0}', d.error || ''));
+          await fetchStatus();
+        } catch (e: any) { setMsg(t('Error: {0}', e.message)); }
+        finally { setBusy(false); }
+      },
+    );
   };
 
   const installed = status?.installed;

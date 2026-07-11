@@ -417,7 +417,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
       <div className="lg:hidden h-12 bg-[#121214] border-b border-white/10 flex items-center justify-around px-2 shrink-0 z-40 select-none">
         <button
           onClick={() => { setActiveMobileTab('canvas'); setMainView('editor'); }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all outline-none ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
             activeMobileTab === 'canvas'
               ? 'bg-[#009639] text-white shadow shadow-emerald-950/20 font-bold'
               : 'text-slate-400 hover:text-white'
@@ -428,7 +428,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
         </button>
         <button
           onClick={() => { setActiveMobileTab('menu'); setMainView('editor'); }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all outline-none ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
             activeMobileTab === 'menu'
               ? 'bg-[#009639] text-white shadow shadow-emerald-950/20 font-bold'
               : 'text-slate-400 hover:text-white'
@@ -439,7 +439,7 @@ function DashboardGrid({ onLogout, adminUser, role, offlineMode }: DashboardGrid
         </button>
         <button
           onClick={() => { setActiveMobileTab('code'); setMainView('files'); }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all outline-none ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
             activeMobileTab === 'code'
               ? 'bg-[#009639] text-white shadow shadow-emerald-950/20 font-bold'
               : 'text-slate-400 hover:text-white'

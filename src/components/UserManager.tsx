@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import { Users, Plus, Trash2, KeyRound, ShieldCheck, X, AlertTriangle } from 'lucide-react';
 import { secureFetch } from '../utils/api';
 import { ROLES, type NfmRole } from '../utils/rbac';
+import { useTopology } from '../context/TopologyContext';
 import { useT } from '../i18n/i18n';
 import { useModalA11y } from '../hooks/useModalA11y';
 
@@ -31,6 +32,7 @@ const roleClass: Record<NfmRole, string> = {
 
 export const UserManager: React.FC<UserManagerProps> = ({ open, onClose, currentUsername }) => {
   const { t } = useT();
+  const { askConfirmation } = useTopology();
   const dialogRef = useModalA11y(open, onClose);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,15 +98,20 @@ export const UserManager: React.FC<UserManagerProps> = ({ open, onClose, current
     finally { setBusy(null); }
   };
 
-  const deleteUser = async (u: ApiUser) => {
-    if (!window.confirm(t('¿Eliminar al usuario "{0}"?', u.username))) return;
-    setErr(null); setBusy(u.id);
-    try {
-      const res = await secureFetch(`/api/users/${u.id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) await load(); else setErr(data.error || 'No se pudo eliminar el usuario.');
-    } catch { setErr('No se pudo eliminar el usuario.'); }
-    finally { setBusy(null); }
+  const deleteUser = (u: ApiUser) => {
+    askConfirmation(
+      t('Eliminar usuario'),
+      t('Se eliminará permanentemente al usuario "{0}". Esta acción es irreversible.', u.username),
+      async () => {
+        setErr(null); setBusy(u.id);
+        try {
+          const res = await secureFetch(`/api/users/${u.id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) await load(); else setErr(data.error || 'No se pudo eliminar el usuario.');
+        } catch { setErr('No se pudo eliminar el usuario.'); }
+        finally { setBusy(null); }
+      },
+    );
   };
 
   if (!open) return null;

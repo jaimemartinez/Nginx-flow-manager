@@ -52,3 +52,20 @@
   height: 10px !important;
   border: 2px solid #0A0A0B !important;
 }
+
+/* Accessibility: honor the OS "reduce motion" setting — near-instant animations/transitions and
+   a static (non-marching) edge dash, so the pulsing badges and animated traffic edges don't churn
+   for users who opt out of motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .react-flow__edge-path {
+    stroke-dasharray: none !important;
+  }
+}
