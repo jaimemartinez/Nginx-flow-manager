@@ -47,6 +47,8 @@ export interface NginxStreamRule {
   backend_port: number; // e.g. 3306
   protocol: 'tcp' | 'udp';
   enabled: boolean;
+  proxy_protocol?: boolean; // send PROXY protocol to the backend (`proxy_protocol on;`) so it sees the real client IP
+  listen_proxy_protocol?: boolean; // accept PROXY protocol on the listen socket (`listen ... proxy_protocol;`), e.g. behind a LB
 }
 
 /**

@@ -1041,7 +1041,9 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
           backend_address: n.data.backend_address,
           backend_port: n.data.backend_port,
           protocol: n.data.protocol,
-          enabled: n.data.enabled
+          enabled: n.data.enabled,
+          proxy_protocol: n.data.proxy_protocol,
+          listen_proxy_protocol: n.data.listen_proxy_protocol
         }));
         
         return {
@@ -1128,7 +1130,9 @@ export const TopologyProvider: React.FC<{ children: React.ReactNode; offlineMode
           backend_address: n.data.backend_address,
           backend_port: parseInt(n.data.backend_port) || 80,
           protocol: n.data.protocol,
-          enabled: n.data.enabled
+          enabled: n.data.enabled,
+          proxy_protocol: n.data.proxy_protocol,
+          listen_proxy_protocol: n.data.listen_proxy_protocol
         }));
 
         return {

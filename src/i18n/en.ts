@@ -164,6 +164,10 @@ export const EN: Record<string, string> = {
   'Nombre de Usuario': 'Username',
   'Acceder de forma segura': 'Sign in securely',
   // ── src/components/CustomNodes.tsx ───────────────────────────────────────
+  'Enviar al backend (proxy_protocol on)': 'Send to backend (proxy_protocol on)',
+  'El backend recibe la IP real del cliente.': 'The backend receives the real client IP.',
+  'Aceptar en el listen': 'Accept on listen',
+  'nginx detrás de un balanceador (HAProxy, ELB…).': 'nginx behind a load balancer (HAProxy, ELB…).',
   'CABECERAS HTTP': 'HTTP HEADERS',
   'Sin cabeceras añadidas.': 'No headers added.',
   'Eliminar Cabecera': 'Remove Header',

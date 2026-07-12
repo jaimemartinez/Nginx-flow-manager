@@ -508,6 +508,39 @@ describe('compileNginxTopology — response caching (proxy_cache)', () => {
   });
 });
 
+describe('compileNginxTopology — Stream (L4) PROXY protocol', () => {
+  const NGINX_CONF = '/etc/nginx/nginx.conf';
+  function stateWithStreams(streams: NginxTopologyState['global']['streams']): NginxTopologyState {
+    return { global: { ...makeGlobal(), streams }, sites: [] };
+  }
+
+  it('emits `proxy_protocol on;` and `listen … proxy_protocol` for a TCP forward that enables them', () => {
+    const conf = compileNginxTopology(stateWithStreams([
+      { id: 's1', label: 'DB', listen_port: 5432, backend_address: '10.0.0.9', backend_port: 5432, protocol: 'tcp', enabled: true, proxy_protocol: true, listen_proxy_protocol: true },
+    ]))[NGINX_CONF];
+    expect(conf).toContain('stream {');
+    expect(conf).toContain('listen 5432 proxy_protocol;');
+    expect(conf).toContain('proxy_protocol on;');
+    expect(conf).toContain('proxy_pass 10.0.0.9:5432;');
+  });
+
+  it('emits neither directive when they are off', () => {
+    const conf = compileNginxTopology(stateWithStreams([
+      { id: 's1', label: 'x', listen_port: 8080, backend_address: '127.0.0.1', backend_port: 80, protocol: 'tcp', enabled: true },
+    ]))[NGINX_CONF];
+    expect(conf).toContain('listen 8080;');
+    expect(conf).not.toContain('proxy_protocol');
+  });
+
+  it('never emits PROXY protocol for a UDP forward (nginx allows it only on TCP)', () => {
+    const conf = compileNginxTopology(stateWithStreams([
+      { id: 's1', label: 'dns', listen_port: 53, backend_address: '1.1.1.1', backend_port: 53, protocol: 'udp', enabled: true, proxy_protocol: true, listen_proxy_protocol: true },
+    ]))[NGINX_CONF];
+    expect(conf).toContain('listen 53 udp;');
+    expect(conf).not.toContain('proxy_protocol');
+  });
+});
+
 describe('orphanHtpasswdFiles — deploy cleanup helper', () => {
   const p = (name: string) => `${HTPASSWD_DIR}/${name}`;
 

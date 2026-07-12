@@ -928,9 +928,14 @@ function compileMainNginxConf(global: NginxGlobalConfig, sites?: NginxSiteConfig
     conf += `stream {\n`;
     const streamBlocks = activeStreams.map(rule => {
       const protocolSuffix = rule.protocol === 'udp' ? ' udp' : '';
+      // PROXY protocol is TCP-only. `listen ... proxy_protocol` accepts it from a fronting LB;
+      // `proxy_protocol on;` forwards it to the backend so it sees the real client IP.
+      const isTcp = rule.protocol !== 'udp';
+      const listenPP = rule.listen_proxy_protocol && isTcp ? ' proxy_protocol' : '';
       return `    # ${rule.label || 'TCP/UDP Forwarder proxy'}\n` +
         `    server {\n` +
-        `        listen ${rule.listen_port}${protocolSuffix};\n` +
+        `        listen ${rule.listen_port}${protocolSuffix}${listenPP};\n` +
+        (rule.proxy_protocol && isTcp ? `        proxy_protocol on;\n` : '') +
         `        proxy_pass ${rule.backend_address}:${rule.backend_port};\n` +
         `    }`;
     });

@@ -2410,6 +2410,7 @@ export const GlobalGzipNode: React.FC<NodeProps<Node<any, 'global_gzip'>>> = ({ 
 };
 
 export const GlobalStreamNode: React.FC<NodeProps<Node<any, 'global_stream'>>> = ({ id, data }) => {
+  const { t } = useT();
   const { removeNode, updateNodeData } = useTopologyActions();
 
   const handleChange = (field: string, value: any) => {
@@ -2495,6 +2496,33 @@ export const GlobalStreamNode: React.FC<NodeProps<Node<any, 'global_stream'>>> =
             />
           </div>
         </div>
+
+        {/* PROXY protocol (L4, TCP only): forward to backend, and/or accept on the listen socket. */}
+        {data.protocol !== 'udp' && (
+          <div className="p-2 bg-[#0A0A0B] rounded border border-white/5 space-y-1.5">
+            <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-mono font-bold">PROXY protocol</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                className="nodrag accent-cyan-500"
+                checked={!!data.proxy_protocol}
+                onChange={(e) => handleChange('proxy_protocol', e.target.checked || undefined)}
+              />
+              <span className="text-[10px] text-slate-300 font-mono">{t('Enviar al backend (proxy_protocol on)')}</span>
+            </label>
+            <span className="block text-[8px] text-slate-500 font-mono leading-tight pl-5">{t('El backend recibe la IP real del cliente.')}</span>
+            <label className="flex items-center gap-1.5 cursor-pointer pt-0.5">
+              <input
+                type="checkbox"
+                className="nodrag accent-cyan-500"
+                checked={!!data.listen_proxy_protocol}
+                onChange={(e) => handleChange('listen_proxy_protocol', e.target.checked || undefined)}
+              />
+              <span className="text-[10px] text-slate-300 font-mono">{t('Aceptar en el listen')}</span>
+            </label>
+            <span className="block text-[8px] text-slate-500 font-mono leading-tight pl-5">{t('nginx detrás de un balanceador (HAProxy, ELB…).')}</span>
+          </div>
+        )}
       </div>
 
       {/* Target Handles */}
