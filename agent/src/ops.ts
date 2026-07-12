@@ -132,7 +132,12 @@ export class Ops {
         await fs.mkdir(path.dirname(target), { recursive: true });
         let rewritten = content;
         if (rel === 'nginx.conf') {
-          rewritten = 'include /etc/nginx/modules-enabled/*.conf;\n' +
+          // Only inject the modules-enabled include when the candidate config doesn't already load
+          // it. Debian/Ubuntu nginx.conf ships `include /etc/nginx/modules-enabled/*.conf;`, which
+          // the importer preserves — prepending a second one loads every dynamic module twice and
+          // `nginx -t` fails with e.g. `module "ngx_stream_module" is already loaded`.
+          const alreadyLoadsModules = /^\s*include\s+\S*modules-enabled\S*\s*;/m.test(content);
+          rewritten = (alreadyLoadsModules ? '' : 'include /etc/nginx/modules-enabled/*.conf;\n') +
             rewritten
               .replace(/^\s*user\s+[^;]+;/gm, '# user (sandbox);')
               // pid + the main error_log point at root-only paths (/run, /var/log) that a bare

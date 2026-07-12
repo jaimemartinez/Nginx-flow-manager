@@ -1408,7 +1408,18 @@ async function startServer() {
       // legacy non-root path gets (open() "/run/nginx.pid" Permission denied) on a valid config.
       if (await useAgent()) {
         try {
-          const r = await agentCall("config.validate", { files, symlinks });
+          // The agent's validation sandbox prepends its own `include .../modules-enabled/*.conf;`.
+          // If the candidate nginx.conf also carries one (preserved from a Debian/Ubuntu import),
+          // every dynamic module loads twice and `nginx -t` fails (`module "ngx_stream_module" is
+          // already loaded`). Strip the config's own copy for validation only — deploy writes the
+          // config verbatim, so runtime module loading is unaffected. (Older agents prepend
+          // unconditionally; this keeps them correct without re-installing the agent.)
+          const vFiles: Record<string, string> = { ...(files as Record<string, string>) };
+          const nc = vFiles["/etc/nginx/nginx.conf"];
+          if (typeof nc === "string") {
+            vFiles["/etc/nginx/nginx.conf"] = nc.replace(/^[ \t]*include\s+\S*modules-enabled\S*\s*;[ \t]*\r?\n?/gm, "");
+          }
+          const r = await agentCall("config.validate", { files: vFiles, symlinks });
           return res.json({ success: !!r.ok, stdout: r.stdout, stderr: r.stderr, error: r.ok ? undefined : "nginx -t falló (agente)" });
         } catch (_) { /* agent hiccup → fall back to the legacy SSH sandbox below */ }
       }
@@ -1424,7 +1435,12 @@ async function startServer() {
       const rewriteRemote = (content: string, isNginxConf = false): string => {
         let r = content;
         if (isNginxConf) {
-          r = "include /etc/nginx/modules-enabled/*.conf;\n" + r;
+          // Only inject the modules-enabled include when the candidate config doesn't already load
+          // it — otherwise a preserved Debian/Ubuntu `include .../modules-enabled/*.conf;` loads every
+          // dynamic module twice and `nginx -t` fails (`module "ngx_stream_module" is already loaded`).
+          if (!/^\s*include\s+\S*modules-enabled\S*\s*;/m.test(content)) {
+            r = "include /etc/nginx/modules-enabled/*.conf;\n" + r;
+          }
           // pid + main error_log point at root-only paths; as a non-root SSH user `nginx -t` fails
           // opening them even when the config is valid. Comment out `user` (getpwnam) and redirect
           // pid/error_log into the sandbox. neutralizeRuntimeDirectives applies the same line-anchored
