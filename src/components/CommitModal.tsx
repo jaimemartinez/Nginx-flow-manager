@@ -484,6 +484,11 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
 
   const validationSuccess = validationResult && validationResult.status === 'success';
   const validationError = validationResult && validationResult.status === 'error';
+  // The most common Stream (L4) failure: the host's nginx lacks ngx_stream_module, so a `stream {}`
+  // block is rejected with `unknown directive "stream"`. Surface a specific, actionable fix instead
+  // of the raw emerg log (the module must be installed ON THE NGINX HOST, remote or local).
+  const missingStreamModule = !!validationError &&
+    /unknown directive "stream"/i.test(`${validationResult?.stderr || ''}\n${validationResult?.stdout || ''}\n${validationResult?.message || ''}`);
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fade-in font-sans">
@@ -577,6 +582,19 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
                         </pre>
                       </div>
                     )}
+
+                    {missingStreamModule && (
+                      <div className="border border-amber-500/30 bg-amber-500/10 rounded p-3 space-y-2">
+                        <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[11px] uppercase tracking-wide font-mono">
+                          <AlertTriangle size={13} /> {t('Falta el módulo Stream (TCP/UDP)')}
+                        </div>
+                        <p className="text-[10.5px] text-slate-300 leading-relaxed font-sans">
+                          {t('Los proxies de Capa 4 (Stream) requieren el módulo ngx_stream_module, que no está instalado en el host nginx. Instálalo en el servidor y recarga:')}
+                        </p>
+                        <pre className="text-[9.5px] leading-normal font-mono bg-black/60 border border-white/10 rounded p-2 overflow-x-auto select-text text-emerald-300">{'sudo apt-get install -y libnginx-mod-stream\nsudo nginx -t && sudo systemctl reload nginx'}</pre>
+                        <p className="text-[9.5px] text-slate-500 font-sans">{t('Después pulsa Revalidar. En modo local puedes instalarlo con el botón del módulo Stream más abajo.')}</p>
+                      </div>
+                    )}
                   </div>
                 ) : null}
 
@@ -632,6 +650,7 @@ export const CommitModal: React.FC<CommitModalProps> = ({ isOpen, onClose }) => 
 
                         <div className="grid grid-cols-2 gap-1.5">
                           {[
+                            { name: 'stream', label: 'Stream (TCP/UDP)', pName: 'libnginx-mod-stream' },
                             { name: 'http-lua', label: 'Lua Scripting', pName: 'libnginx-mod-http-lua' },
                             { name: 'http-echo', label: 'Echo Debug', pName: 'libnginx-mod-http-echo' },
                             { name: 'http-fancyindex', label: 'Fancyindex CSS', pName: 'libnginx-mod-http-fancyindex' },

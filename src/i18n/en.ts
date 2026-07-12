@@ -416,6 +416,9 @@ export const EN: Record<string, string> = {
   'Cerrar y Regresar': 'Close and Return',
   'Cerrar y Reintentar': 'Close and Retry',
   'Validar y Confirmar cambios': 'Validate & Commit changes',
+  'Falta el módulo Stream (TCP/UDP)': 'Stream (TCP/UDP) module missing',
+  'Los proxies de Capa 4 (Stream) requieren el módulo ngx_stream_module, que no está instalado en el host nginx. Instálalo en el servidor y recarga:': 'Layer-4 (Stream) proxies require the ngx_stream_module, which is not installed on the nginx host. Install it on the server and reload:',
+  'Después pulsa Revalidar. En modo local puedes instalarlo con el botón del módulo Stream más abajo.': 'Then click Revalidate. In local mode you can install it with the Stream module button below.',
   'Operando transacciones...': 'Processing transactions...',
   // ── src/components/FileViewer.tsx ────────────────────────────────────────
   'Versiones': 'Versions',
