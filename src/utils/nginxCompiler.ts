@@ -592,10 +592,15 @@ function compileLocationRecursive(
   // and skipped if the original config already preserved an Upgrade header (avoids duplicates).
   const isProxied = !!upstreamId || lData.actionType === 'proxy_pass';
   if (lData.websocket_enabled && isProxied && !locCustomHas(/proxy_set_header\s+Upgrade/i)) {
+    // Connection must be conditional: a literal "upgrade" is also sent on ordinary requests (where
+    // $http_upgrade is empty, so nginx omits Upgrade entirely), which announces a protocol switch
+    // with no target. Backends then drop keep-alive and can mishandle the request — enough to lose
+    // a session cookie between a form GET and its POST. $connection_upgrade comes from a map
+    // auto-generated at http scope (see compileMainNginxConf).
     output += `${innerIndent}# WebSocket support\n`;
     output += `${innerIndent}proxy_http_version 1.1;\n`;
     output += `${innerIndent}proxy_set_header Upgrade \$http_upgrade;\n`;
-    output += `${innerIndent}proxy_set_header Connection "upgrade";\n`;
+    output += `${innerIndent}proxy_set_header Connection \$connection_upgrade;\n`;
   }
 
   // Response caching — cache upstream responses in the shared http-scope zone `nfm_cache` (its
@@ -913,6 +918,22 @@ function compileMainNginxConf(global: NginxGlobalConfig, sites?: NginxSiteConfig
   if (hasProxyCache && !httpRawConfig.includes('proxy_cache_path')) {
     conf += `\n    # Response cache zone (auto-generated) — used by locations with caching enabled\n`;
     conf += `    proxy_cache_path /var/cache/nginx/nfm_cache levels=1:2 keys_zone=nfm_cache:10m max_size=1g inactive=60m use_temp_path=off;\n`;
+  }
+
+  // Auto-generate the `$connection_upgrade` map when any proxied location enables WebSocket. The
+  // location emits `proxy_set_header Connection $connection_upgrade;` — sending a literal "upgrade"
+  // instead would also tag ordinary requests as protocol upgrades and break their keep-alive/session
+  // handling on the backend. Skipped if the imported raw config already defines the map.
+  const hasWebsocket = (sites || []).some(site =>
+    (site.nodes as any[]).some((n: any) =>
+      n.type === 'location' && n.data?.websocket_enabled && locationIsProxied(site, n))
+  );
+  if (hasWebsocket && !/\$connection_upgrade/.test(httpRawConfig)) {
+    conf += `\n    # WebSocket upgrade map (auto-generated) — 'upgrade' only for real upgrade requests\n`;
+    conf += `    map $http_upgrade $connection_upgrade {\n`;
+    conf += `        default upgrade;\n`;
+    conf += `        ''      close;\n`;
+    conf += `    }\n`;
   }
 
   conf += `}\n`;

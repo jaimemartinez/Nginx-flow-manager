@@ -508,6 +508,46 @@ describe('compileNginxTopology — response caching (proxy_cache)', () => {
   });
 });
 
+describe('compileNginxTopology — WebSocket upgrade uses a conditional Connection header', () => {
+  const NGINX_CONF = '/etc/nginx/nginx.conf';
+
+  function rawNode(id: string, content: string): Node<{ label: string; kind: string; content: string }, 'raw_config'> {
+    return { id, type: 'raw_config', position: { x: 0, y: 0 }, data: { label: 'raw', kind: 'directives', content } };
+  }
+
+  it('emits $connection_upgrade (never a literal "upgrade") plus the http-scope map', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'https://10.10.0.2', websocket_enabled: true });
+    const out = compileNginxTopology(
+      makeState({ nodes: [serverNode('srv1', {}), loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    );
+    const site = out[SITE_PATH];
+    expect(site).toContain('proxy_set_header Upgrade $http_upgrade;');
+    expect(site).toContain('proxy_set_header Connection $connection_upgrade;');
+    // A literal "upgrade" would tag ordinary (non-upgrade) requests too — the bug this guards.
+    expect(site).not.toContain('proxy_set_header Connection "upgrade";');
+    expect(out[NGINX_CONF]).toContain('map $http_upgrade $connection_upgrade {');
+  });
+
+  it('does not emit the map when no location enables WebSocket', () => {
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'http://127.0.0.1:8080' });
+    const out = compileNginxTopology(
+      makeState({ nodes: [serverNode('srv1', {}), loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] }),
+    );
+    expect(out[NGINX_CONF]).not.toContain('$connection_upgrade');
+  });
+
+  it('does not duplicate a map the imported config already defines (round-trip safe)', () => {
+    const mapRaw = rawNode('r1', "map $http_upgrade $connection_upgrade {\n    default upgrade;\n    '' close;\n}");
+    const loc = locationNode('l1', { path: '/', actionType: 'proxy_pass', proxy_pass: 'https://10.10.0.2', websocket_enabled: true });
+    const state = makeState({ nodes: [serverNode('srv1', {}), loc], edges: [{ id: 'e1', source: 'srv1', target: 'l1' }] });
+    // http-scope raw_config nodes live on the global block, attached to 'global-http'.
+    state.global.nodes = [mapRaw];
+    state.global.edges = [{ id: 'ge1', source: 'r1', target: 'global-http' }];
+    const conf = compileNginxTopology(state)[NGINX_CONF];
+    expect(conf.match(/map \$http_upgrade \$connection_upgrade \{/g)?.length).toBe(1);
+  });
+});
+
 describe('compileNginxTopology — Stream (L4) PROXY protocol', () => {
   const NGINX_CONF = '/etc/nginx/nginx.conf';
   function stateWithStreams(streams: NginxTopologyState['global']['streams']): NginxTopologyState {
